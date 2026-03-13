@@ -1,0 +1,6 @@
+iot_endpoint = "xxxxxxxxxx.iot.ap-northeast-1.amazonaws.com"
+
+# terraform apply 後に CloudFront ドメインが決まるので、
+# 初回は仮の値で apply → ドメイン確認 → 更新して再 apply
+callback_urls = ["https://xxxxxxxx.cloudfront.net/callback"]
+logout_urls   = ["https://xxxxxxxx.cloudfront.net"]
