@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+.uv/
+dist/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# uv
+uv.lock
+
+# Node
+node_modules/
+dist/
+.cache/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+.terraform.lock.hcl
+terraform.tfvars
+*.auto.tfvars
+
+# IoT certs (絶対にコミットしない)
+emulator/certs/*.pem
+emulator/certs/*.key
+emulator/certs/*.crt
+emulator/certs/*.p8
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# AWS
+.aws-sam/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Lambda build artifacts
+backend/dist/
+backend/*.zip
