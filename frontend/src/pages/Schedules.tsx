@@ -1,7 +1,7 @@
-import { useRobots } from '../hooks/useRobots'
-import { ScheduleManager } from '../components/ScheduleManager/ScheduleManager'
+import { ScheduleManager } from '../components/ScheduleManager/ScheduleManager';
+import { useRobots } from '../hooks/useRobots';
 
 export function Schedules() {
-  const { data: robots = [] } = useRobots()
-  return <ScheduleManager robots={robots} />
+  const { data: robots = [] } = useRobots();
+  return <ScheduleManager robots={robots} />;
 }

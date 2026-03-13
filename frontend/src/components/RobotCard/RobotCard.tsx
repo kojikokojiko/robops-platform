@@ -1,19 +1,20 @@
-import { useNavigate } from 'react-router-dom'
-import type { Robot } from '../../types/robot'
-import { BatteryBar } from '../common/BatteryBar'
-import { StatusBadge } from '../common/StatusBadge'
+import { useNavigate } from 'react-router-dom';
+import type { Robot } from '../../types/robot';
+import { BatteryBar } from '../common/BatteryBar';
+import { StatusBadge } from '../common/StatusBadge';
 
 interface Props {
-  robot: Robot
+  robot: Robot;
 }
 
 export function RobotCard({ robot }: Props) {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   return (
-    <div
+    <button
+      type="button"
       onClick={() => navigate(`/robots/${robot.robot_id}`)}
-      className="cursor-pointer rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md hover:border-blue-200"
+      className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-200 hover:shadow-md"
     >
       <div className="mb-3 flex items-center justify-between">
         <div>
@@ -30,8 +31,12 @@ export function RobotCard({ robot }: Props) {
         </div>
 
         <div className="flex justify-between text-xs text-slate-500">
-          <span>速度: <strong className="text-slate-700">{robot.speed.toFixed(1)} m/s</strong></span>
-          <span>FW: <strong className="text-slate-700">{robot.firmware_version}</strong></span>
+          <span>
+            速度: <strong className="text-slate-700">{robot.speed.toFixed(1)} m/s</strong>
+          </span>
+          <span>
+            FW: <strong className="text-slate-700">{robot.firmware_version}</strong>
+          </span>
         </div>
 
         {robot.last_seen && (
@@ -40,6 +45,6 @@ export function RobotCard({ robot }: Props) {
           </p>
         )}
       </div>
-    </div>
-  )
+    </button>
+  );
 }

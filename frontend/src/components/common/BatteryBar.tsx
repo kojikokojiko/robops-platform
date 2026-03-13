@@ -1,13 +1,10 @@
 interface Props {
-  level: number // 0-100
-  showLabel?: boolean
+  level: number; // 0-100
+  showLabel?: boolean;
 }
 
 export function BatteryBar({ level, showLabel = true }: Props) {
-  const color =
-    level > 50 ? 'bg-green-500' :
-    level > 20 ? 'bg-yellow-500' :
-    'bg-red-500'
+  const color = level > 50 ? 'bg-green-500' : level > 20 ? 'bg-yellow-500' : 'bg-red-500';
 
   return (
     <div className="flex items-center gap-2">
@@ -23,5 +20,5 @@ export function BatteryBar({ level, showLabel = true }: Props) {
         </span>
       )}
     </div>
-  )
+  );
 }

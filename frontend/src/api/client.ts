@@ -6,23 +6,23 @@ import type {
   Schedule,
   ScheduleCreate,
   TelemetryHistory,
-} from '../types/robot'
+} from '../types/robot';
 
 // ローカル: Vite proxy が /api を :8000 に転送
 // 本番: VITE_API_URL に API Gateway URL をセット
-const BASE = import.meta.env.VITE_API_URL ?? ''
+const BASE = import.meta.env.VITE_API_URL ?? '';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...init?.headers },
     ...init,
-  })
+  });
   if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`API ${init?.method ?? 'GET'} ${path} failed (${res.status}): ${text}`)
+    const text = await res.text();
+    throw new Error(`API ${init?.method ?? 'GET'} ${path} failed (${res.status}): ${text}`);
   }
-  if (res.status === 204) return undefined as T
-  return res.json() as Promise<T>
+  if (res.status === 204) return undefined as T;
+  return res.json() as Promise<T>;
 }
 
 // ─── Robots ───────────────────────────────────────────
@@ -59,4 +59,4 @@ export const api = {
       request<OtaJob[]>('/ota/jobs', { method: 'POST', body: JSON.stringify(body) }),
     getJob: (id: string) => request<OtaJob[]>(`/ota/jobs/${id}`),
   },
-}
+};

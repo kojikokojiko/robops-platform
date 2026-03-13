@@ -1,14 +1,14 @@
-import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
-import { Dashboard } from './pages/Dashboard'
-import { RobotDetail } from './pages/RobotDetail'
-import { Schedules } from './pages/Schedules'
-import { OTA } from './pages/OTA'
+import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
+import { Dashboard } from './pages/Dashboard';
+import { OTA } from './pages/OTA';
+import { RobotDetail } from './pages/RobotDetail';
+import { Schedules } from './pages/Schedules';
 
 const NAV_ITEMS = [
   { to: '/', label: 'ダッシュボード', end: true },
   { to: '/schedules', label: 'スケジュール' },
   { to: '/ota', label: 'OTA' },
-]
+];
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -24,9 +24,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                 end={item.end}
                 className={({ isActive }) =>
                   `rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-slate-600 hover:bg-slate-100'
+                    isActive ? 'bg-blue-50 text-blue-600' : 'text-slate-600 hover:bg-slate-100'
                   }`
                 }
               >
@@ -38,7 +36,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       </header>
       <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
     </div>
-  )
+  );
 }
 
 export default function App() {
@@ -53,5 +51,5 @@ export default function App() {
         </Routes>
       </Layout>
     </BrowserRouter>
-  )
+  );
 }

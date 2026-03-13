@@ -6,29 +6,35 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from 'recharts'
-import { useTelemetry } from '../../hooks/useTelemetry'
+} from 'recharts';
+import { useTelemetry } from '../../hooks/useTelemetry';
 
 interface Props {
-  robotId: string
-  minutes?: number
+  robotId: string;
+  minutes?: number;
 }
 
 export function TelemetryChart({ robotId, minutes = 60 }: Props) {
-  const { data, isLoading } = useTelemetry(robotId, minutes)
+  const { data, isLoading } = useTelemetry(robotId, minutes);
 
   if (isLoading) {
-    return <div className="flex h-48 items-center justify-center text-sm text-slate-400">読み込み中...</div>
+    return (
+      <div className="flex h-48 items-center justify-center text-sm text-slate-400">
+        読み込み中...
+      </div>
+    );
   }
 
   const points = (data?.points ?? []).map((p) => ({
     time: new Date(p.timestamp).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
     battery: parseFloat(p.battery_level.toFixed(1)),
     speed: parseFloat(p.speed.toFixed(2)),
-  }))
+  }));
 
   if (points.length === 0) {
-    return <div className="flex h-48 items-center justify-center text-sm text-slate-400">データなし</div>
+    return (
+      <div className="flex h-48 items-center justify-center text-sm text-slate-400">データなし</div>
+    );
   }
 
   return (
@@ -75,5 +81,5 @@ export function TelemetryChart({ robotId, minutes = 60 }: Props) {
         </ResponsiveContainer>
       </div>
     </div>
-  )
+  );
 }
