@@ -25,11 +25,12 @@ def handler(event: dict[str, Any], context: Any) -> None:
         return
 
     # DynamoDB にロボット状態を upsert
+    raw_pos = event.get("position", {})
     robot_item = {
         "robot_id": robot_id,
         "status": event.get("status", "UNKNOWN"),
         "battery_level": _to_decimal(event.get("battery_level", 0)),
-        "position": event.get("position", {}),
+        "position": {k: _to_decimal(v) for k, v in raw_pos.items()},
         "speed": _to_decimal(event.get("speed", 0)),
         "firmware_version": event.get("firmware_version", "unknown"),
         "last_seen": event.get("timestamp", ""),

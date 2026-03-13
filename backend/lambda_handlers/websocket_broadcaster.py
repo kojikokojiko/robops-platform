@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from decimal import Decimal
 from typing import Any
 
 import boto3
@@ -44,9 +45,15 @@ def handler(event: dict[str, Any], context: Any) -> None:
         new_image = record["dynamodb"].get("NewImage", {})
         robot_data = {k: _deserializer.deserialize(v) for k, v in new_image.items()}
 
-        payload = json.dumps({"type": "robot_update", "robot": robot_data})
+        payload = json.dumps({"type": "robot_update", "robot": robot_data}, default=_json_default)
 
         _broadcast(apigw, connection_ids, payload)
+
+
+def _json_default(obj: Any) -> Any:
+    if isinstance(obj, Decimal):
+        return float(obj)
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
 
 def _broadcast(apigw: Any, connection_ids: list[str], payload: str) -> None:

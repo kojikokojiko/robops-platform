@@ -208,5 +208,5 @@ terraform apply
 | Step 3 | ロボットエミュレータ (Docker + Python MQTT) | ✅ 完了 |
 | Step 4 | FastAPI バックエンド | ✅ 完了 |
 | Step 5 | React フロントエンド | ✅ 完了 |
-| Step 6 | OTA・スケジューリング | - |
-| Step 7 | E2E 統合テスト | - |
+| Step 6 | OTA・スケジューリング | ✅ 完了 (Step 5 と同時実装) |
+| Step 7 | 結合テスト | ✅ 完了 |
