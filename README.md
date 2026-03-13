@@ -205,7 +205,7 @@ terraform apply
 |-------|------|------|
 | Step 1 | プロジェクト初期化・CI/CD・Linting | ✅ 完了 |
 | Step 2 | Terraform 基盤 (IoT Core, DynamoDB, Timestream, Lambda, API GW, ECS) | ✅ 完了 |
-| Step 3 | ロボットエミュレータ (Docker + Python MQTT) | - |
+| Step 3 | ロボットエミュレータ (Docker + Python MQTT) | ✅ 完了 |
 | Step 4 | FastAPI バックエンド | - |
 | Step 5 | React フロントエンド | - |
 | Step 6 | OTA・スケジューリング | - |

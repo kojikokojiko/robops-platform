@@ -1,0 +1,76 @@
+name: robops-emulator
+
+# ローカル開発用。
+# 証明書は emulator/certs/<robot_id>/ に配置すること。
+# セットアップ手順: emulator/README.md を参照。
+
+x-robot-base: &robot-base
+  build:
+    context: .
+    dockerfile: Dockerfile
+  environment:
+    IOT_ENDPOINT: ${IOT_ENDPOINT}
+    AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-ap-northeast-1}
+    CERT_SOURCE: volume
+    CERT_DIR: /certs
+    TELEMETRY_INTERVAL: ${TELEMETRY_INTERVAL:-1.0}
+  restart: unless-stopped
+
+services:
+  robot-001:
+    <<: *robot-base
+    environment:
+      <<: *robot-base
+      ROBOT_ID: robot-001
+    environment:
+      IOT_ENDPOINT: ${IOT_ENDPOINT}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-ap-northeast-1}
+      CERT_SOURCE: volume
+      CERT_DIR: /certs
+      ROBOT_ID: robot-001
+    volumes:
+      - ./certs/robot-001:/certs:ro
+
+  robot-002:
+    <<: *robot-base
+    environment:
+      IOT_ENDPOINT: ${IOT_ENDPOINT}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-ap-northeast-1}
+      CERT_SOURCE: volume
+      CERT_DIR: /certs
+      ROBOT_ID: robot-002
+    volumes:
+      - ./certs/robot-002:/certs:ro
+
+  robot-003:
+    <<: *robot-base
+    environment:
+      IOT_ENDPOINT: ${IOT_ENDPOINT}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-ap-northeast-1}
+      CERT_SOURCE: volume
+      CERT_DIR: /certs
+      ROBOT_ID: robot-003
+    volumes:
+      - ./certs/robot-003:/certs:ro
+
+  robot-004:
+    <<: *robot-base
+    environment:
+      IOT_ENDPOINT: ${IOT_ENDPOINT}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-ap-northeast-1}
+      CERT_SOURCE: volume
+      CERT_DIR: /certs
+      ROBOT_ID: robot-004
+    volumes:
+      - ./certs/robot-004:/certs:ro
+
+  robot-005:
+    <<: *robot-base
+    environment:
+      IOT_ENDPOINT: ${IOT_ENDPOINT}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-ap-northeast-1}
+      CERT_SOURCE: volume
+      CERT_DIR: /certs
+      ROBOT_ID: robot-005
+    volumes:
+      - ./certs/robot-005:/certs:ro
