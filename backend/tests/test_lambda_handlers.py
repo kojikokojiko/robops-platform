@@ -75,7 +75,9 @@ class TestTelemetryProcessor:
         assert robots == []
         mock_ts.assert_not_called()
 
-    @patch("app.services.telemetry_service.write_telemetry", side_effect=Exception("telemetry error"))
+    @patch(
+        "app.services.telemetry_service.write_telemetry", side_effect=Exception("telemetry error")
+    )
     def test_telemetry_failure_does_not_raise(self, mock_ts):
         """テレメトリ履歴書き込み失敗でもロボット状態の upsert は成功する"""
         from lambda_handlers.telemetry_processor import handler
