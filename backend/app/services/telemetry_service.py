@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import time
+from datetime import UTC
 from decimal import Decimal
 from typing import Any
 
@@ -12,7 +13,9 @@ from boto3.dynamodb.conditions import Key
 
 _TABLE_NAME = lambda: os.environ["DYNAMODB_TABLE_TELEMETRY"]  # noqa: E731
 
-_resource = boto3.resource("dynamodb", region_name=os.getenv("AWS_DEFAULT_REGION", "ap-northeast-1"))
+_resource = boto3.resource(
+    "dynamodb", region_name=os.getenv("AWS_DEFAULT_REGION", "ap-northeast-1")
+)
 
 
 def _table():
@@ -40,9 +43,9 @@ def write_telemetry(record: dict[str, Any]) -> None:
 
 def query_telemetry(robot_id: str, minutes: int = 60) -> list[dict[str, Any]]:
     """過去 N 分間のテレメトリ一覧を取得"""
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta
 
-    since = (datetime.now(timezone.utc) - timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    since = (datetime.now(UTC) - timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     resp = _table().query(
         KeyConditionExpression=Key("robot_id").eq(robot_id) & Key("timestamp").gte(since),
@@ -51,10 +54,12 @@ def query_telemetry(robot_id: str, minutes: int = 60) -> list[dict[str, Any]]:
 
     rows = []
     for item in resp.get("Items", []):
-        rows.append({
-            "timestamp": item["timestamp"],
-            "battery_level": float(item.get("battery_level", 0)),
-            "speed": float(item.get("speed", 0)),
-            "status": item.get("status", ""),
-        })
+        rows.append(
+            {
+                "timestamp": item["timestamp"],
+                "battery_level": float(item.get("battery_level", 0)),
+                "speed": float(item.get("speed", 0)),
+                "status": item.get("status", ""),
+            }
+        )
     return rows

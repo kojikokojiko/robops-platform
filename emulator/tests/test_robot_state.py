@@ -20,6 +20,7 @@ def robot() -> RobotState:
 
 # ─── コマンド受理テスト ────────────────────────────────────
 
+
 class TestStartCleaning:
     def test_idle_to_cleaning(self, robot: RobotState) -> None:
         assert robot.handle_command("START_CLEANING", {"room_id": "living_room"})
@@ -93,6 +94,7 @@ class TestSetSpeed:
 
 # ─── OTA テスト ─────────────────────────────────────────────
 
+
 class TestOTA:
     def test_apply_ota_while_idle(self, robot: RobotState) -> None:
         robot.apply_ota(new_speed=1.0, new_version="2.0.0")
@@ -108,6 +110,7 @@ class TestOTA:
 
 
 # ─── tick テスト ───────────────────────────────────────────
+
 
 class TestTick:
     def test_battery_drains_while_cleaning(self, robot: RobotState) -> None:
@@ -142,6 +145,7 @@ class TestTick:
 
 
 # ─── テレメトリ ─────────────────────────────────────────────
+
 
 class TestTelemetry:
     def test_telemetry_structure(self, robot: RobotState) -> None:

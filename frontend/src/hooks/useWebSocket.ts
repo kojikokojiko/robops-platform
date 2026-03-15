@@ -40,14 +40,11 @@ export function useWebSocket() {
             status: msg.robot.status,
           };
           const cutoff = new Date(now - 60 * 60 * 1000).toISOString();
-          qc.setQueriesData<TelemetryHistory>(
-            { queryKey: ['telemetry', robotId] },
-            (prev) => {
-              if (!prev) return prev;
-              const trimmed = prev.points.filter((p) => p.timestamp >= cutoff);
-              return { ...prev, points: [...trimmed, newPoint] };
-            },
-          );
+          qc.setQueriesData<TelemetryHistory>({ queryKey: ['telemetry', robotId] }, (prev) => {
+            if (!prev) return prev;
+            const trimmed = prev.points.filter((p) => p.timestamp >= cutoff);
+            return { ...prev, points: [...trimmed, newPoint] };
+          });
         }
       }
     },
@@ -78,7 +75,13 @@ export function useWebSocket() {
     };
 
     ws.onclose = (e) => {
-      console.log('[WS] disconnected (code:', e.code, 'reason:', e.reason, '), reconnecting in 3s...');
+      console.log(
+        '[WS] disconnected (code:',
+        e.code,
+        'reason:',
+        e.reason,
+        '), reconnecting in 3s...',
+      );
       reconnectTimer.current = setTimeout(() => connectRef.current(), 3000);
     };
 

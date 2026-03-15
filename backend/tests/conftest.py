@@ -9,22 +9,24 @@ import moto
 import pytest
 
 # テスト用環境変数 (他のモジュールより先にセット)
-os.environ.update({
-    "ENV": "test",
-    "AWS_DEFAULT_REGION": "ap-northeast-1",
-    "AWS_ACCESS_KEY_ID": "testing",
-    "AWS_SECRET_ACCESS_KEY": "testing",
-    "DYNAMODB_TABLE_ROBOTS": "test-robots",
-    "DYNAMODB_TABLE_SCHEDULES": "test-schedules",
-    "DYNAMODB_TABLE_OTA_JOBS": "test-ota-jobs",
-    "DYNAMODB_TABLE_WS_CONNECTIONS": "test-ws-connections",
-    "TIMESTREAM_DATABASE": "test-db",
-    "TIMESTREAM_TABLE": "telemetry",
-    "OTA_FIRMWARE_BUCKET": "test-firmware-bucket",
-    "IOT_ENDPOINT": "test.iot.ap-northeast-1.amazonaws.com",
-    "SCHEDULER_TRIGGER_LAMBDA_ARN": "arn:aws:lambda:ap-northeast-1:123456789012:function:test",
-    "EVENTBRIDGE_SCHEDULER_ROLE_ARN": "arn:aws:iam::123456789012:role/test",
-})
+os.environ.update(
+    {
+        "ENV": "test",
+        "AWS_DEFAULT_REGION": "ap-northeast-1",
+        "AWS_ACCESS_KEY_ID": "testing",
+        "AWS_SECRET_ACCESS_KEY": "testing",
+        "DYNAMODB_TABLE_ROBOTS": "test-robots",
+        "DYNAMODB_TABLE_SCHEDULES": "test-schedules",
+        "DYNAMODB_TABLE_OTA_JOBS": "test-ota-jobs",
+        "DYNAMODB_TABLE_WS_CONNECTIONS": "test-ws-connections",
+        "TIMESTREAM_DATABASE": "test-db",
+        "TIMESTREAM_TABLE": "telemetry",
+        "OTA_FIRMWARE_BUCKET": "test-firmware-bucket",
+        "IOT_ENDPOINT": "test.iot.ap-northeast-1.amazonaws.com",
+        "SCHEDULER_TRIGGER_LAMBDA_ARN": "arn:aws:lambda:ap-northeast-1:123456789012:function:test",
+        "EVENTBRIDGE_SCHEDULER_ROLE_ARN": "arn:aws:iam::123456789012:role/test",
+    }
+)
 
 
 @pytest.fixture()
@@ -47,11 +49,13 @@ def _setup_dynamodb() -> None:
             {"AttributeName": "robot_id", "AttributeType": "S"},
             {"AttributeName": "status", "AttributeType": "S"},
         ],
-        GlobalSecondaryIndexes=[{
-            "IndexName": "status-index",
-            "KeySchema": [{"AttributeName": "status", "KeyType": "HASH"}],
-            "Projection": {"ProjectionType": "ALL"},
-        }],
+        GlobalSecondaryIndexes=[
+            {
+                "IndexName": "status-index",
+                "KeySchema": [{"AttributeName": "status", "KeyType": "HASH"}],
+                "Projection": {"ProjectionType": "ALL"},
+            }
+        ],
     )
 
     ddb.create_table(
@@ -65,11 +69,13 @@ def _setup_dynamodb() -> None:
             {"AttributeName": "schedule_id", "AttributeType": "S"},
             {"AttributeName": "robot_id", "AttributeType": "S"},
         ],
-        GlobalSecondaryIndexes=[{
-            "IndexName": "robot-index",
-            "KeySchema": [{"AttributeName": "robot_id", "KeyType": "HASH"}],
-            "Projection": {"ProjectionType": "ALL"},
-        }],
+        GlobalSecondaryIndexes=[
+            {
+                "IndexName": "robot-index",
+                "KeySchema": [{"AttributeName": "robot_id", "KeyType": "HASH"}],
+                "Projection": {"ProjectionType": "ALL"},
+            }
+        ],
     )
 
     ddb.create_table(
@@ -83,11 +89,13 @@ def _setup_dynamodb() -> None:
             {"AttributeName": "job_id", "AttributeType": "S"},
             {"AttributeName": "robot_id", "AttributeType": "S"},
         ],
-        GlobalSecondaryIndexes=[{
-            "IndexName": "robot-index",
-            "KeySchema": [{"AttributeName": "robot_id", "KeyType": "HASH"}],
-            "Projection": {"ProjectionType": "ALL"},
-        }],
+        GlobalSecondaryIndexes=[
+            {
+                "IndexName": "robot-index",
+                "KeySchema": [{"AttributeName": "robot_id", "KeyType": "HASH"}],
+                "Projection": {"ProjectionType": "ALL"},
+            }
+        ],
     )
 
     ddb.create_table(

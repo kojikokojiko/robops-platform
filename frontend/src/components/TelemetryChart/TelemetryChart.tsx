@@ -30,7 +30,10 @@ export function TelemetryChart({ robotId, minutes = 60 }: Props) {
     const raw = data?.points ?? [];
     const buckets = new Map<string, { battery: number; speed: number; count: number }>();
     for (const p of raw) {
-      const key = new Date(p.timestamp).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+      const key = new Date(p.timestamp).toLocaleTimeString('ja-JP', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
       const b = buckets.get(key);
       if (b) {
         b.battery += p.battery_level;

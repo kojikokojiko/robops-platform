@@ -1,36 +1,36 @@
-import { memo, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text } from '@react-three/drei';
-import { Vector3, type Mesh } from 'three';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { memo, useRef } from 'react';
+import { type Mesh, Vector3 } from 'three';
 import type { Robot, RobotStatus } from '../../types/robot';
 
 // ─── 定数 ─────────────────────────────────────────────────
 const ROOMS = [
-  { id: 'living_room',   label: 'リビング', x: 1, z: 0, w: 5, d: 4, color: '#e2e8f0' },
-  { id: 'kitchen',       label: 'キッチン', x: 6, z: 0, w: 4, d: 4, color: '#fef9c3' },
-  { id: 'bedroom_1',     label: '寝室1',   x: 0, z: 4, w: 5, d: 4, color: '#ede9fe' },
-  { id: 'bedroom_2',     label: '寝室2',   x: 5, z: 4, w: 5, d: 4, color: '#fce7f3' },
+  { id: 'living_room', label: 'リビング', x: 1, z: 0, w: 5, d: 4, color: '#e2e8f0' },
+  { id: 'kitchen', label: 'キッチン', x: 6, z: 0, w: 4, d: 4, color: '#fef9c3' },
+  { id: 'bedroom_1', label: '寝室1', x: 0, z: 4, w: 5, d: 4, color: '#ede9fe' },
+  { id: 'bedroom_2', label: '寝室2', x: 5, z: 4, w: 5, d: 4, color: '#fce7f3' },
   { id: 'charging_dock', label: '充電ドック', x: 0, z: 0, w: 1, d: 1, color: '#dcfce7' },
 ];
 
 const STATUS_COLOR: Record<RobotStatus, string> = {
-  IDLE:             '#94a3b8',
-  CLEANING:         '#3b82f6',
-  CHARGING:         '#22c55e',
-  RETURNING_TO_DOCK:'#f59e0b',
-  LOW_BATTERY:      '#f97316',
-  UPDATING:         '#a855f7',
-  ERROR:            '#ef4444',
+  IDLE: '#94a3b8',
+  CLEANING: '#3b82f6',
+  CHARGING: '#22c55e',
+  RETURNING_TO_DOCK: '#f59e0b',
+  LOW_BATTERY: '#f97316',
+  UPDATING: '#a855f7',
+  ERROR: '#ef4444',
 };
 
 const STATUS_LABELS: Record<RobotStatus, string> = {
-  IDLE:             '待機中',
-  CLEANING:         '掃除中',
-  CHARGING:         '充電中',
-  RETURNING_TO_DOCK:'ドックへ',
-  LOW_BATTERY:      '低バッテリー',
-  UPDATING:         'OTA更新中',
-  ERROR:            'エラー',
+  IDLE: '待機中',
+  CLEANING: '掃除中',
+  CHARGING: '充電中',
+  RETURNING_TO_DOCK: 'ドックへ',
+  LOW_BATTERY: '低バッテリー',
+  UPDATING: 'OTA更新中',
+  ERROR: 'エラー',
 };
 
 // ─── 部屋 (静的 → memo でスキップ) ──────────────────────
@@ -62,9 +62,9 @@ const Room = memo(function Room({ room }: { room: (typeof ROOMS)[0] }) {
         <meshLambertMaterial color={room.color} />
       </mesh>
       <Wall pos={[0, 0, -room.d / 2 + 0.03]} w={room.w} />
-      <Wall pos={[0, 0,  room.d / 2 - 0.03]} w={room.w} />
+      <Wall pos={[0, 0, room.d / 2 - 0.03]} w={room.w} />
       <Wall pos={[-room.w / 2 + 0.03, 0, 0]} w={room.d} rotY={Math.PI / 2} />
-      <Wall pos={[ room.w / 2 - 0.03, 0, 0]} w={room.d} rotY={Math.PI / 2} />
+      <Wall pos={[room.w / 2 - 0.03, 0, 0]} w={room.d} rotY={Math.PI / 2} />
       <Text
         position={[0, 0.5, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
@@ -99,17 +99,17 @@ const LERP_SPEED = 12;
 
 function RobotMesh({ robot, onSelect }: { robot: Robot; onSelect?: (id: string) => void }) {
   const groupRef = useRef<import('three').Group>(null);
-  const bodyRef  = useRef<Mesh>(null);
+  const bodyRef = useRef<Mesh>(null);
   const brushRef = useRef<Mesh>(null);
-  const glowRef  = useRef<Mesh>(null);
+  const glowRef = useRef<Mesh>(null);
 
   const visualPos = useRef(new Vector3(robot.position.x, 0.1, robot.position.y));
-  const heading   = useRef(0);
+  const heading = useRef(0);
 
-  const color      = STATUS_COLOR[robot.status] ?? '#94a3b8';
+  const color = STATUS_COLOR[robot.status] ?? '#94a3b8';
   const isCleaning = robot.status === 'CLEANING';
-  const isMoving   = robot.status === 'CLEANING' || robot.status === 'RETURNING_TO_DOCK';
-  const isError    = robot.status === 'ERROR';
+  const isMoving = robot.status === 'CLEANING' || robot.status === 'RETURNING_TO_DOCK';
+  const isError = robot.status === 'ERROR';
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -131,7 +131,7 @@ function RobotMesh({ robot, onSelect }: { robot: Robot; onSelect?: (id: string) 
       if (Math.abs(dx) + Math.abs(dz) > 0.02) {
         const targetAngle = Math.atan2(dx, dz);
         let diff = targetAngle - heading.current;
-        while (diff >  Math.PI) diff -= 2 * Math.PI;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
         while (diff < -Math.PI) diff += 2 * Math.PI;
         heading.current += diff * Math.min(8 * delta, 1);
         groupRef.current.rotation.y = heading.current;
@@ -161,6 +161,8 @@ function RobotMesh({ robot, onSelect }: { robot: Robot; onSelect?: (id: string) 
   });
 
   return (
+    // Three.js <group> is not a DOM element; onClick is handled by R3F raycasting
+    // biome-ignore lint/a11y/noStaticElementInteractions: 3D canvas element
     <group
       ref={groupRef}
       position={[visualPos.current.x, 0.1, visualPos.current.z]}
@@ -169,7 +171,13 @@ function RobotMesh({ robot, onSelect }: { robot: Robot; onSelect?: (id: string) 
       {/* グロー */}
       <mesh ref={glowRef}>
         <cylinderGeometry args={[0.42, 0.42, 0.05, 16]} />
-        <meshStandardMaterial color={color} transparent opacity={0} emissive={color} emissiveIntensity={2} />
+        <meshStandardMaterial
+          color={color}
+          transparent
+          opacity={0}
+          emissive={color}
+          emissiveIntensity={2}
+        />
       </mesh>
 
       {/* ボディ */}

@@ -95,7 +95,9 @@ class RobotMqttClient:
         tick_interval = self.telemetry_interval  # 物理tickをテレメトリ間隔に合わせる
         logger.info(
             "[%s] Starting telemetry loop (tick=%.1fs, publish=%.1fs)",
-            self.robot_id, tick_interval, self.telemetry_interval,
+            self.robot_id,
+            tick_interval,
+            self.telemetry_interval,
         )
 
         last_publish = 0.0
@@ -154,7 +156,12 @@ class RobotMqttClient:
             if self._state:
                 accepted = self._state.handle_command(command, params)
                 if not accepted:
-                    logger.warning("[%s] Command '%s' was rejected (current status: %s)", self.robot_id, command, self._state.status)
+                    logger.warning(
+                        "[%s] Command '%s' was rejected (current status: %s)",
+                        self.robot_id,
+                        command,
+                        self._state.status,
+                    )
         except Exception:
             logger.exception("[%s] Error handling command", self.robot_id)
 
@@ -171,7 +178,9 @@ class RobotMqttClient:
 
         # 次のジョブ通知
         future2, _ = self._jobs_client.subscribe_to_start_next_pending_job_execution_accepted(
-            request=iotjobs.StartNextPendingJobExecutionSubscriptionRequest(thing_name=self.robot_id),
+            request=iotjobs.StartNextPendingJobExecutionSubscriptionRequest(
+                thing_name=self.robot_id
+            ),
             qos=mqtt.QoS.AT_LEAST_ONCE,
             callback=self._on_next_job,
         )
@@ -189,7 +198,8 @@ class RobotMqttClient:
         # ジョブ更新完了通知
         future3, _ = self._jobs_client.subscribe_to_update_job_execution_accepted(
             request=iotjobs.UpdateJobExecutionSubscriptionRequest(
-                thing_name=self.robot_id, job_id="+",
+                thing_name=self.robot_id,
+                job_id="+",
             ),
             qos=mqtt.QoS.AT_LEAST_ONCE,
             callback=lambda response: logger.debug("[%s] Job update accepted", self.robot_id),
@@ -206,14 +216,20 @@ class RobotMqttClient:
 
     def _on_pending_jobs_response(self, response: iotjobs.GetPendingJobExecutionsResponse) -> None:
         if response.queued_jobs:
-            logger.info("[%s] %d pending OTA job(s) found", self.robot_id, len(response.queued_jobs))
+            logger.info(
+                "[%s] %d pending OTA job(s) found", self.robot_id, len(response.queued_jobs)
+            )
             self._start_next_job()
 
     def _on_jobs_changed(self, event: iotjobs.JobExecutionsChangedEvent) -> None:
         """新規ジョブが QUEUED になったときに呼ばれる ($aws/things/{thing}/jobs/notify)"""
         queued = (event.jobs or {}).get(iotjobs.JobStatus.QUEUED, [])
         if queued:
-            logger.info("[%s] New job notification: %d queued job(s), starting next", self.robot_id, len(queued))
+            logger.info(
+                "[%s] New job notification: %d queued job(s), starting next",
+                self.robot_id,
+                len(queued),
+            )
             self._start_next_job()
 
     def _on_next_job(self, response: iotjobs.StartNextJobExecutionResponse) -> None:
@@ -269,7 +285,9 @@ class RobotMqttClient:
     def _on_connection_interrupted(self, connection: Any, error: Any, **kwargs: Any) -> None:
         logger.warning("[%s] Connection interrupted: %s", self.robot_id, error)
 
-    def _on_connection_resumed(self, connection: Any, return_code: Any, session_present: bool, **kwargs: Any) -> None:
+    def _on_connection_resumed(
+        self, connection: Any, return_code: Any, session_present: bool, **kwargs: Any
+    ) -> None:
         logger.info("[%s] Connection resumed (session_present=%s)", self.robot_id, session_present)
         if not session_present:
             self._subscribe_commands()

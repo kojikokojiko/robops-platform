@@ -29,10 +29,26 @@ def write_telemetry(record: dict[str, Any]) -> None:
     ]
 
     measures = [
-        {"MeasureName": "battery_level", "MeasureValue": str(record["battery_level"]), "MeasureValueType": "DOUBLE"},
-        {"MeasureName": "speed", "MeasureValue": str(record["speed"]), "MeasureValueType": "DOUBLE"},
-        {"MeasureName": "position_x", "MeasureValue": str(record.get("position", {}).get("x", 0)), "MeasureValueType": "DOUBLE"},
-        {"MeasureName": "position_y", "MeasureValue": str(record.get("position", {}).get("y", 0)), "MeasureValueType": "DOUBLE"},
+        {
+            "MeasureName": "battery_level",
+            "MeasureValue": str(record["battery_level"]),
+            "MeasureValueType": "DOUBLE",
+        },
+        {
+            "MeasureName": "speed",
+            "MeasureValue": str(record["speed"]),
+            "MeasureValueType": "DOUBLE",
+        },
+        {
+            "MeasureName": "position_x",
+            "MeasureValue": str(record.get("position", {}).get("x", 0)),
+            "MeasureValueType": "DOUBLE",
+        },
+        {
+            "MeasureName": "position_y",
+            "MeasureValue": str(record.get("position", {}).get("y", 0)),
+            "MeasureValueType": "DOUBLE",
+        },
     ]
 
     records = [
@@ -80,5 +96,6 @@ def _parse_timestream_result(resp: dict[str, Any]) -> list[dict[str, Any]]:
 
 def _iso_to_epoch_ms(iso: str) -> float:
     from datetime import datetime
+
     dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
     return dt.timestamp() * 1000

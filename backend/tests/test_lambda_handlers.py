@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import json
-from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
-import boto3
 import pytest
 
 from app.services import dynamodb_service as db
@@ -18,6 +16,7 @@ def setup(aws_mock):  # noqa: ANN001
 
 
 # ─── telemetry_processor ─────────────────────────────────
+
 
 class TestTelemetryProcessor:
     """IoT → DynamoDB upsert + Timestream 書き込み"""
@@ -50,15 +49,18 @@ class TestTelemetryProcessor:
         from lambda_handlers.telemetry_processor import handler
 
         for status in ("IDLE", "CLEANING"):
-            handler({
-                "robot_id": "robot-002",
-                "status": status,
-                "battery_level": 90.0,
-                "speed": 0.0,
-                "position": {"x": 0.0, "y": 0.0, "room": "charging_dock"},
-                "firmware_version": "1.0.0",
-                "timestamp": "2024-01-01T00:00:00Z",
-            }, None)
+            handler(
+                {
+                    "robot_id": "robot-002",
+                    "status": status,
+                    "battery_level": 90.0,
+                    "speed": 0.0,
+                    "position": {"x": 0.0, "y": 0.0, "room": "charging_dock"},
+                    "firmware_version": "1.0.0",
+                    "timestamp": "2024-01-01T00:00:00Z",
+                },
+                None,
+            )
 
         robot = db.get_robot("robot-002")
         assert robot["status"] == "CLEANING"
@@ -78,15 +80,18 @@ class TestTelemetryProcessor:
         """Timestream 書き込み失敗でも DynamoDB は成功する"""
         from lambda_handlers.telemetry_processor import handler
 
-        handler({
-            "robot_id": "robot-003",
-            "status": "ERROR",
-            "battery_level": 10.0,
-            "speed": 0.0,
-            "position": {"x": 1.0, "y": 1.0, "room": "bedroom_1"},
-            "firmware_version": "1.0.0",
-            "timestamp": "2024-01-01T00:00:00Z",
-        }, None)
+        handler(
+            {
+                "robot_id": "robot-003",
+                "status": "ERROR",
+                "battery_level": 10.0,
+                "speed": 0.0,
+                "position": {"x": 1.0, "y": 1.0, "room": "bedroom_1"},
+                "firmware_version": "1.0.0",
+                "timestamp": "2024-01-01T00:00:00Z",
+            },
+            None,
+        )
 
         robot = db.get_robot("robot-003")
         assert robot is not None
@@ -94,6 +99,7 @@ class TestTelemetryProcessor:
 
 
 # ─── websocket_broadcaster ───────────────────────────────
+
 
 class TestWebSocketBroadcaster:
     """DynamoDB Streams → WebSocket 全接続ブロードキャスト"""
@@ -104,21 +110,26 @@ class TestWebSocketBroadcaster:
             "eventName": "MODIFY",
             "dynamodb": {
                 "NewImage": {
-                    "robot_id":         {"S": robot_id},
-                    "status":           {"S": status},
-                    "battery_level":    {"N": "80.0"},
-                    "speed":            {"N": "1.0"},
+                    "robot_id": {"S": robot_id},
+                    "status": {"S": status},
+                    "battery_level": {"N": "80.0"},
+                    "speed": {"N": "1.0"},
                     "firmware_version": {"S": "1.0.0"},
-                    "position": {"M": {
-                        "x": {"N": "1.0"},
-                        "y": {"N": "2.0"},
-                        "room": {"S": "living_room"},
-                    }},
+                    "position": {
+                        "M": {
+                            "x": {"N": "1.0"},
+                            "y": {"N": "2.0"},
+                            "room": {"S": "living_room"},
+                        }
+                    },
                 }
             },
         }
 
-    @patch.dict("os.environ", {"WEBSOCKET_API_ENDPOINT": "https://fake.execute-api.ap-northeast-1.amazonaws.com/dev"})
+    @patch.dict(
+        "os.environ",
+        {"WEBSOCKET_API_ENDPOINT": "https://fake.execute-api.ap-northeast-1.amazonaws.com/dev"},
+    )
     @patch("boto3.client")
     def test_broadcasts_to_all_connections(self, mock_boto_client):
         from lambda_handlers.websocket_broadcaster import handler
@@ -135,12 +146,14 @@ class TestWebSocketBroadcaster:
 
         assert mock_apigw.post_to_connection.call_count == 2
         call_cids = {
-            call.kwargs["ConnectionId"]
-            for call in mock_apigw.post_to_connection.call_args_list
+            call.kwargs["ConnectionId"] for call in mock_apigw.post_to_connection.call_args_list
         }
         assert call_cids == {"conn-aaa", "conn-bbb"}
 
-    @patch.dict("os.environ", {"WEBSOCKET_API_ENDPOINT": "https://fake.execute-api.ap-northeast-1.amazonaws.com/dev"})
+    @patch.dict(
+        "os.environ",
+        {"WEBSOCKET_API_ENDPOINT": "https://fake.execute-api.ap-northeast-1.amazonaws.com/dev"},
+    )
     @patch("boto3.client")
     def test_skips_on_delete_event(self, mock_boto_client):
         """DELETE イベントはブロードキャストしない"""
@@ -155,7 +168,10 @@ class TestWebSocketBroadcaster:
 
         mock_apigw.post_to_connection.assert_not_called()
 
-    @patch.dict("os.environ", {"WEBSOCKET_API_ENDPOINT": "https://fake.execute-api.ap-northeast-1.amazonaws.com/dev"})
+    @patch.dict(
+        "os.environ",
+        {"WEBSOCKET_API_ENDPOINT": "https://fake.execute-api.ap-northeast-1.amazonaws.com/dev"},
+    )
     @patch("boto3.client")
     def test_removes_stale_connections(self, mock_boto_client):
         """GoneException が発生した接続は DynamoDB から削除される"""
@@ -189,6 +205,7 @@ class TestWebSocketBroadcaster:
 
 # ─── scheduler_trigger ───────────────────────────────────
 
+
 class TestSchedulerTrigger:
     """EventBridge → IoT START_CLEANING コマンド送信"""
 
@@ -221,7 +238,7 @@ class TestSchedulerTrigger:
         mock_iot = MagicMock()
         mock_iot_client_fn.return_value = mock_iot
 
-        handler({"room_id": "kitchen"}, None)   # robot_id なし
+        handler({"room_id": "kitchen"}, None)  # robot_id なし
         handler({"robot_id": "robot-001"}, None)  # room_id なし
 
         mock_iot.publish.assert_not_called()
