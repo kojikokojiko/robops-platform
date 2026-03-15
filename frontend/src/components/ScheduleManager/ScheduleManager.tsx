@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../../api/client';
-import type { Robot, ScheduleCreate } from '../../types/robot';
+import type { ScheduleCreate } from '../../types/robot';
 
 const ROOMS: Record<string, string> = {
   living_room: 'リビング',
@@ -10,16 +10,19 @@ const ROOMS: Record<string, string> = {
   bedroom_2: '寝室2',
 };
 
-interface Props {
-  robots: Robot[];
-}
-
-export function ScheduleManager({ robots }: Props) {
+export function ScheduleManager() {
   const qc = useQueryClient();
+
+  const { data: robots = [] } = useQuery({
+    queryKey: ['robots'],
+    queryFn: api.robots.list,
+  });
+
   const { data: schedules = [] } = useQuery({
     queryKey: ['schedules'],
     queryFn: api.schedules.list,
   });
+
   const createMutation = useMutation({
     mutationFn: api.schedules.create,
     onSuccess: () => {
@@ -27,6 +30,7 @@ export function ScheduleManager({ robots }: Props) {
       setOpen(false);
     },
   });
+
   const deleteMutation = useMutation({
     mutationFn: api.schedules.delete,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['schedules'] }),
@@ -34,11 +38,19 @@ export function ScheduleManager({ robots }: Props) {
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<ScheduleCreate>({
-    robot_id: robots[0]?.robot_id ?? '',
+    robot_id: '',
     room_id: 'living_room',
     cron_expression: 'cron(0 8 * * ? *)',
     description: '',
   });
+
+  function handleOpen() {
+    setForm((f) => ({
+      ...f,
+      robot_id: robots[0]?.robot_id ?? '',
+    }));
+    setOpen(true);
+  }
 
   return (
     <div className="space-y-4">
@@ -46,7 +58,7 @@ export function ScheduleManager({ robots }: Props) {
         <h2 className="text-lg font-semibold text-slate-800">掃除スケジュール</h2>
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={handleOpen}
           className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
         >
           + 追加
@@ -149,7 +161,7 @@ export function ScheduleManager({ robots }: Props) {
               <button
                 type="button"
                 onClick={() => createMutation.mutate(form)}
-                disabled={createMutation.isPending}
+                disabled={createMutation.isPending || !form.robot_id}
                 className="flex-1 rounded-lg bg-blue-500 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
               >
                 {createMutation.isPending ? '作成中...' : '作成'}

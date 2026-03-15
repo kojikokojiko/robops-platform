@@ -1,5 +1,10 @@
+data "aws_caller_identity" "current" {}
+
 locals {
   name = "${var.prefix}-${var.env}"
+
+  # scheduler_trigger の ARN をリソース参照なしで計算（循環依存を避けるため）
+  scheduler_trigger_arn = "arn:aws:lambda:${var.region}:${data.aws_caller_identity.current.account_id}:function:${local.name}-scheduler-trigger"
 
   common_env = {
     ENV                              = var.env
@@ -10,7 +15,7 @@ locals {
     DYNAMODB_TABLE_TELEMETRY         = var.dynamodb_telemetry_table_name
     OTA_FIRMWARE_BUCKET              = var.ota_firmware_bucket_name
     IOT_ENDPOINT                     = var.iot_endpoint
-    SCHEDULER_TRIGGER_LAMBDA_ARN     = aws_lambda_function.scheduler_trigger.arn
+    SCHEDULER_TRIGGER_LAMBDA_ARN     = local.scheduler_trigger_arn
     EVENTBRIDGE_SCHEDULER_ROLE_ARN   = var.eventbridge_scheduler_role_arn
     EVENTBRIDGE_SCHEDULE_GROUP       = var.eventbridge_schedule_group
     WEBSOCKET_API_ENDPOINT           = var.websocket_api_endpoint

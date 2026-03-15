@@ -11,11 +11,6 @@ variable "region" {
   type = string
 }
 
-variable "lambda_artifacts_bucket" {
-  description = "S3 bucket for Lambda ZIP artifacts"
-  type        = string
-}
-
 variable "dynamodb_robots_table_name" {
   type = string
 }
@@ -65,10 +60,6 @@ variable "ota_firmware_bucket_name" {
 }
 
 variable "ota_firmware_bucket_arn" {
-  type = string
-}
-
-variable "cognito_user_pool_arn" {
   type = string
 }
 

@@ -69,19 +69,6 @@ resource "aws_cloudwatch_log_group" "http_api" {
   tags              = var.tags
 }
 
-# Cognito オーソライザー
-resource "aws_apigatewayv2_authorizer" "cognito" {
-  api_id           = aws_apigatewayv2_api.http.id
-  authorizer_type  = "JWT"
-  identity_sources = ["$request.header.Authorization"]
-  name             = "cognito"
-
-  jwt_configuration {
-    audience = [var.cognito_client_id]
-    issuer   = "https://cognito-idp.ap-northeast-1.amazonaws.com/${var.cognito_user_pool_id}"
-  }
-}
-
 # Lambda integration
 resource "aws_apigatewayv2_integration" "api" {
   api_id                 = aws_apigatewayv2_api.http.id

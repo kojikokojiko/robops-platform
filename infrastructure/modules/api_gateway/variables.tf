@@ -23,18 +23,6 @@ variable "websocket_lambda_invoke_arn" {
   type = string
 }
 
-variable "cognito_user_pool_arn" {
-  type = string
-}
-
-variable "cognito_user_pool_id" {
-  type = string
-}
-
-variable "cognito_client_id" {
-  type = string
-}
-
 variable "tags" {
   type    = map(string)
   default = {}

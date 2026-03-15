@@ -32,12 +32,15 @@ locals {
   }
 }
 
-# ─── S3 & CloudFront ────────────────────────────────────
+# ─── S3 ─────────────────────────────────────────────────
 
-module "s3_cloudfront" {
-  source = "../../modules/s3_cloudfront"
-  env    = local.env
-  prefix = local.prefix
+resource "aws_s3_bucket" "lambda_artifacts" {
+  bucket = "${local.prefix}-${local.env}-lambda-artifacts"
+  tags   = local.common_tags
+}
+
+resource "aws_s3_bucket" "ota_firmware" {
+  bucket = "${local.prefix}-${local.env}-ota-firmware"
   tags   = local.common_tags
 }
 
@@ -50,19 +53,6 @@ module "dynamodb" {
   tags   = local.common_tags
 }
 
-# ─── Cognito ────────────────────────────────────────────
-
-module "cognito" {
-  source = "../../modules/cognito"
-  env    = local.env
-  prefix = local.prefix
-
-  callback_urls = ["http://localhost:5173/callback"]
-  logout_urls   = ["http://localhost:5173"]
-
-  tags = local.common_tags
-}
-
 # ─── Lambda ─────────────────────────────────────────────
 
 module "lambda" {
@@ -70,8 +60,6 @@ module "lambda" {
   env    = local.env
   prefix = local.prefix
   region = "ap-northeast-1"
-
-  lambda_artifacts_bucket = module.s3_cloudfront.lambda_artifacts_bucket_name
 
   dynamodb_robots_table_name         = module.dynamodb.robots_table_name
   dynamodb_schedules_table_name      = module.dynamodb.schedules_table_name
@@ -85,10 +73,8 @@ module "lambda" {
   dynamodb_telemetry_table_arn       = module.dynamodb.telemetry_table_arn
   dynamodb_robots_stream_arn         = module.dynamodb.robots_stream_arn
 
-  ota_firmware_bucket_name = module.s3_cloudfront.ota_firmware_bucket_name
-  ota_firmware_bucket_arn  = module.s3_cloudfront.ota_firmware_bucket_arn
-
-  cognito_user_pool_arn = module.cognito.user_pool_arn
+  ota_firmware_bucket_name = aws_s3_bucket.ota_firmware.bucket
+  ota_firmware_bucket_arn  = aws_s3_bucket.ota_firmware.arn
 
   iot_endpoint                   = var.iot_endpoint
   eventbridge_scheduler_role_arn = module.eventbridge.scheduler_role_arn
@@ -111,10 +97,6 @@ module "api_gateway" {
   websocket_lambda_arn        = module.lambda.websocket_function_arn
   websocket_lambda_invoke_arn = module.lambda.websocket_invoke_arn
 
-  cognito_user_pool_arn = module.cognito.user_pool_arn
-  cognito_user_pool_id  = module.cognito.user_pool_id
-  cognito_client_id     = module.cognito.client_id
-
   tags = local.common_tags
 }
 
@@ -126,21 +108,6 @@ module "iot_core" {
   prefix = local.prefix
 
   telemetry_processor_lambda_arn = module.lambda.telemetry_processor_function_arn
-
-  tags = local.common_tags
-}
-
-# ─── ECS Emulator ───────────────────────────────────────
-
-module "ecs_emulator" {
-  source = "../../modules/ecs_emulator"
-  env    = local.env
-  prefix = local.prefix
-  region = "ap-northeast-1"
-
-  iot_endpoint       = var.iot_endpoint
-  robot_secret_names = module.iot_core.robot_secret_names
-  robot_secret_arns  = module.iot_core.robot_secret_arns
 
   tags = local.common_tags
 }
