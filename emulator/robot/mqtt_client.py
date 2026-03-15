@@ -92,19 +92,26 @@ class RobotMqttClient:
     def run_forever(self) -> None:
         """テレメトリ送信ループをブロッキングで実行"""
         self._running = True
-        logger.info("[%s] Starting telemetry loop (interval=%.1fs)", self.robot_id, self.telemetry_interval)
+        tick_interval = self.telemetry_interval  # 物理tickをテレメトリ間隔に合わせる
+        logger.info(
+            "[%s] Starting telemetry loop (tick=%.1fs, publish=%.1fs)",
+            self.robot_id, tick_interval, self.telemetry_interval,
+        )
 
+        last_publish = 0.0
         while self._running:
             start = time.time()
             try:
                 if self._state:
                     self._state.tick()
-                    self._publish_telemetry()
+                    if start - last_publish >= self.telemetry_interval:
+                        self._publish_telemetry()
+                        last_publish = start
             except Exception:
                 logger.exception("[%s] Error in telemetry loop", self.robot_id)
 
             elapsed = time.time() - start
-            sleep_time = max(0.0, self.telemetry_interval - elapsed)
+            sleep_time = max(0.0, tick_interval - elapsed)
             time.sleep(sleep_time)
 
     # ─── 送信 ──────────────────────────────────────────────
@@ -155,7 +162,7 @@ class RobotMqttClient:
 
     def _subscribe_jobs(self) -> None:
         # ペンディング中のジョブ通知を購読
-        future, _ = self._jobs_client.subscribe_to_get_pending_job_executions_response(
+        future, _ = self._jobs_client.subscribe_to_get_pending_job_executions_accepted(
             request=iotjobs.GetPendingJobExecutionsSubscriptionRequest(thing_name=self.robot_id),
             qos=mqtt.QoS.AT_LEAST_ONCE,
             callback=self._on_pending_jobs_response,
@@ -164,11 +171,20 @@ class RobotMqttClient:
 
         # 次のジョブ通知
         future2, _ = self._jobs_client.subscribe_to_start_next_pending_job_execution_accepted(
-            request=iotjobs.StartNextJobExecutionSubscriptionRequest(thing_name=self.robot_id),
+            request=iotjobs.StartNextPendingJobExecutionSubscriptionRequest(thing_name=self.robot_id),
             qos=mqtt.QoS.AT_LEAST_ONCE,
             callback=self._on_next_job,
         )
         future2.result(timeout=5)
+
+        # 新規ジョブキュー通知 ($aws/things/{thing}/jobs/notify)
+        # エミュレータ起動後に作成されたジョブを検知するために必要
+        future_notify, _ = self._jobs_client.subscribe_to_job_executions_changed_events(
+            request=iotjobs.JobExecutionsChangedSubscriptionRequest(thing_name=self.robot_id),
+            qos=mqtt.QoS.AT_LEAST_ONCE,
+            callback=self._on_jobs_changed,
+        )
+        future_notify.result(timeout=5)
 
         # ジョブ更新完了通知
         future3, _ = self._jobs_client.subscribe_to_update_job_execution_accepted(
@@ -181,7 +197,7 @@ class RobotMqttClient:
         future3.result(timeout=5)
 
         # ペンディング中のジョブを取得
-        self._jobs_client.get_pending_job_executions(
+        self._jobs_client.publish_get_pending_job_executions(
             request=iotjobs.GetPendingJobExecutionsRequest(thing_name=self.robot_id),
             qos=mqtt.QoS.AT_LEAST_ONCE,
         )
@@ -191,6 +207,13 @@ class RobotMqttClient:
     def _on_pending_jobs_response(self, response: iotjobs.GetPendingJobExecutionsResponse) -> None:
         if response.queued_jobs:
             logger.info("[%s] %d pending OTA job(s) found", self.robot_id, len(response.queued_jobs))
+            self._start_next_job()
+
+    def _on_jobs_changed(self, event: iotjobs.JobExecutionsChangedEvent) -> None:
+        """新規ジョブが QUEUED になったときに呼ばれる ($aws/things/{thing}/jobs/notify)"""
+        queued = (event.jobs or {}).get(iotjobs.JobStatus.QUEUED, [])
+        if queued:
+            logger.info("[%s] New job notification: %d queued job(s), starting next", self.robot_id, len(queued))
             self._start_next_job()
 
     def _on_next_job(self, response: iotjobs.StartNextJobExecutionResponse) -> None:
@@ -226,13 +249,13 @@ class RobotMqttClient:
             self._update_job(job_id, iotjobs.JobStatus.FAILED)
 
     def _start_next_job(self) -> None:
-        self._jobs_client.start_next_pending_job_execution(
-            request=iotjobs.StartNextJobExecutionRequest(thing_name=self.robot_id),
+        self._jobs_client.publish_start_next_pending_job_execution(
+            request=iotjobs.StartNextPendingJobExecutionRequest(thing_name=self.robot_id),
             qos=mqtt.QoS.AT_LEAST_ONCE,
         )
 
     def _update_job(self, job_id: str, status: iotjobs.JobStatus) -> None:
-        self._jobs_client.update_job_execution(
+        self._jobs_client.publish_update_job_execution(
             request=iotjobs.UpdateJobExecutionRequest(
                 thing_name=self.robot_id,
                 job_id=job_id,

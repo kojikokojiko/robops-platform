@@ -48,15 +48,15 @@ variable "dynamodb_ws_connections_table_arn" {
   type = string
 }
 
+variable "dynamodb_telemetry_table_name" {
+  type = string
+}
+
+variable "dynamodb_telemetry_table_arn" {
+  type = string
+}
+
 variable "dynamodb_robots_stream_arn" {
-  type = string
-}
-
-variable "timestream_database_name" {
-  type = string
-}
-
-variable "timestream_table_name" {
   type = string
 }
 
@@ -69,6 +69,28 @@ variable "ota_firmware_bucket_arn" {
 }
 
 variable "cognito_user_pool_arn" {
+  type = string
+}
+
+variable "iot_endpoint" {
+  type = string
+}
+
+variable "scheduler_trigger_lambda_arn" {
+  type        = string
+  description = "Scheduler trigger Lambda ARN (passed after creation to avoid circular dep)"
+  default     = ""
+}
+
+variable "eventbridge_scheduler_role_arn" {
+  type = string
+}
+
+variable "eventbridge_schedule_group" {
+  type = string
+}
+
+variable "websocket_api_endpoint" {
   type = string
 }
 

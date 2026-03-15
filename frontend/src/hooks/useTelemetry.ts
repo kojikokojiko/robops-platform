@@ -6,6 +6,6 @@ export function useTelemetry(robotId: string, minutes = 60) {
     queryKey: ['telemetry', robotId, minutes],
     queryFn: () => api.telemetry.get(robotId, minutes),
     enabled: !!robotId,
-    refetchInterval: 10000,
+    refetchInterval: 30_000, // WebSocketで追記しつつ、30秒ごとにサーバーと同期
   });
 }

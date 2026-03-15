@@ -26,6 +26,14 @@ output "ota_jobs_table_arn" {
   value = aws_dynamodb_table.ota_jobs.arn
 }
 
+output "telemetry_table_name" {
+  value = aws_dynamodb_table.telemetry.name
+}
+
+output "telemetry_table_arn" {
+  value = aws_dynamodb_table.telemetry.arn
+}
+
 output "websocket_connections_table_name" {
   value = aws_dynamodb_table.websocket_connections.name
 }

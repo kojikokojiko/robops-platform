@@ -28,15 +28,15 @@ class RobotConfig:
     ca_path: str
 
     # テレメトリ送信間隔 (秒)
-    telemetry_interval: float = 1.0
+    telemetry_interval: float = 2.0
 
-    # バッテリー関連
-    battery_drain_rate: float = 0.05  # % / tick (掃除中)
-    battery_charge_rate: float = 0.2  # % / tick (充電中)
+    # バッテリー関連 (drain: 1部屋掃除で約50%消費, charge: ~10分でフル)
+    battery_drain_rate: float = 0.0084  # % / s (formula: rate * elapsed * 60)
+    battery_charge_rate: float = 0.083  # % / s
     low_battery_threshold: float = 20.0  # %
 
-    # ローカル開発時の初期バッテリー (ランダムにしてロボットごとに差を出す)
-    initial_battery: float = field(default_factory=lambda: 80.0)
+    # 初期バッテリー
+    initial_battery: float = 100.0
 
     # 一時ファイル (secrets_manager 使用時にクリーンアップ対象)
     _temp_dir: tempfile.TemporaryDirectory | None = field(default=None, repr=False)
@@ -60,9 +60,7 @@ def load_config() -> RobotConfig:
         cert_path, key_path, ca_path = _load_from_volume(robot_id)
         tmp_dir = None
 
-    # バッテリー初期値: ロボットごとに差を出す (robot_id の末尾数字を利用)
-    suffix = robot_id.split("-")[-1]
-    initial_battery = 60.0 + (int(suffix) % 5) * 8.0  # 60~92%
+    telemetry_interval = float(os.getenv("TELEMETRY_INTERVAL", "2.0"))
 
     return RobotConfig(
         robot_id=robot_id,
@@ -71,7 +69,7 @@ def load_config() -> RobotConfig:
         cert_path=cert_path,
         key_path=key_path,
         ca_path=ca_path,
-        initial_battery=initial_battery,
+        telemetry_interval=telemetry_interval,
         _temp_dir=tmp_dir,
     )
 

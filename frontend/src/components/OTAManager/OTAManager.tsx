@@ -38,6 +38,7 @@ export function OTAManager({ robots }: Props) {
   });
 
   const [open, setOpen] = useState(false);
+  const [filterRobot, setFilterRobot] = useState<string | null>(null);
   const [form, setForm] = useState<OtaJobCreate>({
     robot_ids: robots.map((r) => r.robot_id),
     new_speed: 0.8,
@@ -85,14 +86,42 @@ export function OTAManager({ robots }: Props) {
 
       {/* ジョブ履歴 */}
       <div className="rounded-xl border border-slate-200 bg-white">
-        <div className="border-b border-slate-100 px-4 py-3">
-          <h3 className="text-sm font-semibold text-slate-700">ジョブ履歴</h3>
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-3">
+          <h3 className="text-sm font-semibold text-slate-700 mr-2">ジョブ履歴</h3>
+          <button
+            type="button"
+            onClick={() => setFilterRobot(null)}
+            className={`rounded-full px-3 py-0.5 text-xs font-medium transition ${
+              filterRobot === null ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            すべて
+          </button>
+          {robots.map((r) => (
+            <button
+              key={r.robot_id}
+              type="button"
+              onClick={() => setFilterRobot(filterRobot === r.robot_id ? null : r.robot_id)}
+              className={`rounded-full px-3 py-0.5 text-xs font-medium transition ${
+                filterRobot === r.robot_id ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              {r.robot_id}
+            </button>
+          ))}
         </div>
         {jobs.length === 0 ? (
           <p className="py-8 text-center text-sm text-slate-400">ジョブがありません</p>
         ) : (
           <div className="divide-y divide-slate-50">
-            {jobs.map((job) => (
+            {[...jobs]
+              .filter((job) => filterRobot === null || job.robot_id === filterRobot)
+              .sort((a, b) => {
+                const dateDiff = (b.started_at ?? '').localeCompare(a.started_at ?? '');
+                if (dateDiff !== 0) return dateDiff;
+                return a.robot_id.localeCompare(b.robot_id);
+              })
+              .map((job) => (
               <div
                 key={`${job.job_id}-${job.robot_id}`}
                 className="flex items-center justify-between px-4 py-3"

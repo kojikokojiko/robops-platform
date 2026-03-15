@@ -28,9 +28,12 @@ def handler(event: dict[str, Any], context: Any) -> None:
         logger.warning("WEBSOCKET_API_ENDPOINT not set")
         return
 
+    # apigatewaymanagementapi は https:// が必要 (wss:// は不可)
+    https_endpoint = ws_endpoint.replace("wss://", "https://").replace("ws://", "http://")
+
     apigw = boto3.client(
         "apigatewaymanagementapi",
-        endpoint_url=ws_endpoint,
+        endpoint_url=https_endpoint,
         region_name=_region,
     )
 
@@ -44,6 +47,9 @@ def handler(event: dict[str, Any], context: Any) -> None:
 
         new_image = record["dynamodb"].get("NewImage", {})
         robot_data = {k: _deserializer.deserialize(v) for k, v in new_image.items()}
+
+        # REST API (Robot Pydantic model) に合わせてデフォルト値を補完
+        robot_data.setdefault("name", "")
 
         payload = json.dumps({"type": "robot_update", "robot": robot_data}, default=_json_default)
 

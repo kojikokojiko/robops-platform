@@ -2,15 +2,18 @@ locals {
   name = "${var.prefix}-${var.env}"
 
   common_env = {
-    ENV                         = var.env
-    AWS_DEFAULT_REGION          = var.region
-    DYNAMODB_TABLE_ROBOTS       = var.dynamodb_robots_table_name
-    DYNAMODB_TABLE_SCHEDULES    = var.dynamodb_schedules_table_name
-    DYNAMODB_TABLE_OTA_JOBS     = var.dynamodb_ota_jobs_table_name
-    DYNAMODB_TABLE_WS_CONNECTIONS = var.dynamodb_ws_connections_table_name
-    TIMESTREAM_DATABASE         = var.timestream_database_name
-    TIMESTREAM_TABLE            = var.timestream_table_name
-    OTA_FIRMWARE_BUCKET         = var.ota_firmware_bucket_name
+    ENV                              = var.env
+    DYNAMODB_TABLE_ROBOTS            = var.dynamodb_robots_table_name
+    DYNAMODB_TABLE_SCHEDULES         = var.dynamodb_schedules_table_name
+    DYNAMODB_TABLE_OTA_JOBS          = var.dynamodb_ota_jobs_table_name
+    DYNAMODB_TABLE_WS_CONNECTIONS    = var.dynamodb_ws_connections_table_name
+    DYNAMODB_TABLE_TELEMETRY         = var.dynamodb_telemetry_table_name
+    OTA_FIRMWARE_BUCKET              = var.ota_firmware_bucket_name
+    IOT_ENDPOINT                     = var.iot_endpoint
+    SCHEDULER_TRIGGER_LAMBDA_ARN     = var.scheduler_trigger_lambda_arn
+    EVENTBRIDGE_SCHEDULER_ROLE_ARN   = var.eventbridge_scheduler_role_arn
+    EVENTBRIDGE_SCHEDULE_GROUP       = var.eventbridge_schedule_group
+    WEBSOCKET_API_ENDPOINT           = var.websocket_api_endpoint
   }
 }
 
@@ -72,20 +75,22 @@ resource "aws_iam_role_policy" "lambda_permissions" {
           var.dynamodb_ota_jobs_table_arn,
           "${var.dynamodb_ota_jobs_table_arn}/index/*",
           var.dynamodb_ws_connections_table_arn,
+          var.dynamodb_telemetry_table_arn,
+          "${var.dynamodb_telemetry_table_arn}/index/*",
         ]
       },
       {
-        Sid    = "Timestream"
+        Sid    = "DynamoDBStreams"
         Effect = "Allow"
         Action = [
-          "timestream:WriteRecords",
-          "timestream:DescribeEndpoints",
-          "timestream:Select",
-          "timestream:SelectValues",
-          "timestream:DescribeTable",
-          "timestream:ListTables",
+          "dynamodb:GetRecords",
+          "dynamodb:GetShardIterator",
+          "dynamodb:DescribeStream",
+          "dynamodb:ListStreams",
         ]
-        Resource = "*"
+        Resource = [
+          var.dynamodb_robots_stream_arn,
+        ]
       },
       {
         Sid    = "IoTCore"
@@ -95,6 +100,7 @@ resource "aws_iam_role_policy" "lambda_permissions" {
           "iot:DescribeEndpoint",
           "iot:CreateJob",
           "iot:DescribeJob",
+          "iot:DescribeJobExecution",
           "iot:ListJobs",
           "iot:CancelJob",
           "iot:ListThings",
@@ -148,6 +154,7 @@ resource "aws_lambda_function" "api" {
   role          = aws_iam_role.lambda.arn
   handler       = "app.main.handler"
   runtime       = "python3.12"
+  architectures = ["arm64"]
   timeout       = 30
   memory_size   = 256
 
@@ -181,6 +188,7 @@ resource "aws_lambda_function" "telemetry_processor" {
   role          = aws_iam_role.lambda.arn
   handler       = "lambda_handlers.telemetry_processor.handler"
   runtime       = "python3.12"
+  architectures = ["arm64"]
   timeout       = 30
   memory_size   = 128
 
@@ -212,6 +220,7 @@ resource "aws_lambda_function" "websocket" {
   role          = aws_iam_role.lambda.arn
   handler       = "app.websocket.handler.handler"
   runtime       = "python3.12"
+  architectures = ["arm64"]
   timeout       = 30
   memory_size   = 128
 
@@ -244,6 +253,7 @@ resource "aws_lambda_function" "ws_broadcaster" {
   role          = aws_iam_role.lambda.arn
   handler       = "lambda_handlers.websocket_broadcaster.handler"
   runtime       = "python3.12"
+  architectures = ["arm64"]
   timeout       = 30
   memory_size   = 128
 
@@ -283,6 +293,7 @@ resource "aws_lambda_function" "scheduler_trigger" {
   role          = aws_iam_role.lambda.arn
   handler       = "lambda_handlers.scheduler_trigger.handler"
   runtime       = "python3.12"
+  architectures = ["arm64"]
   timeout       = 30
   memory_size   = 128
 

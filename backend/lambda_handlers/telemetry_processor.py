@@ -1,15 +1,16 @@
 """
 IoT Topic Rule → Lambda。
-robots/+/telemetry メッセージを DynamoDB と Timestream に書き込む。
+robots/+/telemetry メッセージを DynamoDB に書き込む。
 """
 
 from __future__ import annotations
 
 import logging
+from decimal import Decimal
 from typing import Any
 
 from app.services import dynamodb_service as db
-from app.services import timestream_service as ts
+from app.services import telemetry_service as ts
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ def handler(event: dict[str, Any], context: Any) -> None:
         logger.warning("Missing robot_id in telemetry event: %s", event)
         return
 
-    # DynamoDB にロボット状態を upsert
+    # DynamoDB にロボット現在状態を upsert
     raw_pos = event.get("position", {})
     robot_item = {
         "robot_id": robot_id,
@@ -38,15 +39,14 @@ def handler(event: dict[str, Any], context: Any) -> None:
     }
     db.upsert_robot(robot_item)
 
-    # Timestream に時系列データを書き込む
+    # DynamoDB にテレメトリ履歴を書き込む
     try:
         ts.write_telemetry(event)
     except Exception:
-        logger.exception("Failed to write telemetry to Timestream for %s", robot_id)
+        logger.exception("Failed to write telemetry history for %s", robot_id)
 
 
 def _to_decimal(value: Any) -> Any:
-    from decimal import Decimal
     try:
         return Decimal(str(value))
     except Exception:

@@ -29,10 +29,7 @@ terraform.tfvars
 *.auto.tfvars
 
 # IoT certs (絶対にコミットしない)
-emulator/certs/*.pem
-emulator/certs/*.key
-emulator/certs/*.crt
-emulator/certs/*.p8
+emulator/certs/
 
 # Environment
 .env
@@ -54,3 +51,4 @@ Thumbs.db
 # Lambda build artifacts
 backend/dist/
 backend/*.zip
+lambda.zip

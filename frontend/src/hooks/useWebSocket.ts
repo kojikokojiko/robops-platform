@@ -1,13 +1,16 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
-import type { Robot, WsMessage } from '../types/robot';
+import type { Robot, TelemetryHistory, TelemetryPoint, WsMessage } from '../types/robot';
+
+const TELEMETRY_APPEND_INTERVAL = 10_000; // 10秒ごとに1点追記（描画負荷対策）
 
 export function useWebSocket() {
   const qc = useQueryClient();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Store connect in a ref so onclose can schedule reconnect without circular deps
   const connectRef = useRef<() => void>(() => {});
+  // ロボットごとの最終テレメトリ追記時刻
+  const lastTelemetryAppend = useRef<Map<string, number>>(new Map());
 
   const handleMessage = useCallback(
     (msg: WsMessage) => {
@@ -23,6 +26,29 @@ export function useWebSocket() {
           return next;
         });
         qc.setQueryData(['robots', msg.robot.robot_id], msg.robot);
+
+        // テレメトリグラフをリアルタイム更新（10秒に1点追記）
+        const robotId = msg.robot.robot_id;
+        const now = Date.now();
+        const last = lastTelemetryAppend.current.get(robotId) ?? 0;
+        if (now - last >= TELEMETRY_APPEND_INTERVAL) {
+          lastTelemetryAppend.current.set(robotId, now);
+          const newPoint: TelemetryPoint = {
+            timestamp: msg.robot.last_seen,
+            battery_level: msg.robot.battery_level,
+            speed: msg.robot.speed,
+            status: msg.robot.status,
+          };
+          const cutoff = new Date(now - 60 * 60 * 1000).toISOString();
+          qc.setQueriesData<TelemetryHistory>(
+            { queryKey: ['telemetry', robotId] },
+            (prev) => {
+              if (!prev) return prev;
+              const trimmed = prev.points.filter((p) => p.timestamp >= cutoff);
+              return { ...prev, points: [...trimmed, newPoint] };
+            },
+          );
+        }
       }
     },
     [qc],
@@ -37,25 +63,27 @@ export function useWebSocket() {
     wsRef.current = ws;
 
     ws.onopen = () => {
-      console.log('[WS] connected');
+      console.log('[WS] connected to', url);
       ws.send(JSON.stringify({ action: 'subscribe_robot' }));
     };
 
     ws.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data) as WsMessage;
+        console.log('[WS] message received:', msg.type, msg);
         handleMessage(msg);
       } catch {
-        // ignore parse errors
+        console.warn('[WS] failed to parse message:', e.data);
       }
     };
 
-    ws.onclose = () => {
-      console.log('[WS] disconnected, reconnecting in 3s...');
+    ws.onclose = (e) => {
+      console.log('[WS] disconnected (code:', e.code, 'reason:', e.reason, '), reconnecting in 3s...');
       reconnectTimer.current = setTimeout(() => connectRef.current(), 3000);
     };
 
-    ws.onerror = () => {
+    ws.onerror = (e) => {
+      console.error('[WS] error:', e);
       ws.close();
     };
   }, [handleMessage]);

@@ -2,137 +2,66 @@
 
 ## 概要
 
-お掃除ロボットの運用管理プラットフォーム。AWS IoT Coreを中核に、複数ロボットのリアルタイム監視・制御・OTAアップデート・スケジューリングを実現する。実物ロボットは用意せず、**ロボットエミュレータを ECS Fargate 上で常時稼働**させてデモを行う。デモ時は5台のエミュレータロボットを扱うが、数万台規模へのスケールを前提としたアーキテクチャとする。
+お掃除ロボットの運用管理プラットフォーム。AWS IoT Coreを中核に、複数ロボットのリアルタイム監視・制御・OTAアップデート・スケジューリングを実現する。実物ロボットは用意せず、**ロボットエミュレータ (Docker Compose)** でデモを行う。5台のエミュレータロボットを扱うが、数万台規模へのスケールを前提としたアーキテクチャとする。
 
 ---
 
 ## システムアーキテクチャ
 
-### ローカル開発環境
+> 図の生成: `python3 docs/architecture.py` → `docs/architecture.png`
 
-> **全 AWS サービスは dev 環境の実リソースに接続する（LocalStack は使わない）。**
-> アプリコード（エミュレータ・バックエンド・フロントエンド）だけローカルで動かす。
-> Terraform で dev / prod を別リソースとして管理するため、本番への影響はゼロ。
+![アーキテクチャ図](docs/architecture.png)
+
+> **ローカルで動かすのはエミュレータ (Docker Compose) と Vite dev server のみ。**
+> フロントエンドは `VITE_API_URL` に API Gateway の URL を指定して直接 AWS にリクエストする。
+> LocalStack は使わず、すべて実 AWS リソースに接続する。
 
 ```
   開発者のPC
-  ┌─────────────────────────────────────────────────────────────┐
-  │                                                               │
-  │  Docker Compose (エミュレータ)                                │
-  │  ┌────────────┐  ┌────────────┐  ┌────────────┐             │
-  │  │ robot-001  │  │ robot-002  │  │ robot-003  │  ...        │
-  │  │ (Python)   │  │ (Python)   │  │ (Python)   │             │
-  │  │ certs: vol │  │ certs: vol │  │ certs: vol │             │
-  │  └─────┬──────┘  └─────┬──────┘  └─────┬──────┘             │
-  │        └───────────────┴───────────────┘                     │
-  │                        │ MQTT/TLS                             │
-  │                        │                                      │
-  │  FastAPI (uvicorn :8000)           Vite dev server (:5173)   │
-  │  ┌───────────────────────┐         ┌─────────────────────┐   │
-  │  │  ・ロボット管理 API    │◄────────│  React Dashboard    │   │
-  │  │  ・コマンド送信        │  HTTP   │  (HTTP + WebSocket) │   │
-  │  │  ・テレメトリ取得      │  /WS    └─────────────────────┘   │
-  │  │  ・スケジュール管理    │                                    │
-  │  │  ・OTA 管理           │                                    │
-  │  └──────────┬────────────┘                                   │
-  │             │ boto3 / AWS SDK  (AWS_PROFILE=dev)              │
-  └─────────────┼───────────────────────────────────────────────┘
-                │ すべて実 AWS dev リソースに接続
-                ↓
-┌─────────────────────────────────────────────────────────────────┐
-│  AWS CLOUD  ── dev 環境  (Terraform workspace: dev)             │
-│                                                                   │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │  AWS IoT Core (dev)                                       │  │
-│  │  MQTT Broker  ・IoT Registry  ・IoT Rules  ・IoT Jobs     │  │
-│  └──────────────────────────┬────────────────────────────────┘  │
-│               ┌─────────────┴─────────────┐                     │
-│               ↓                           ↓                     │
-│  ┌────────────────────┐     ┌─────────────────────────────┐     │
-│  │  DynamoDB (dev)    │     │  Timestream (dev)           │     │
-│  │  ロボット状態       │     │  テレメトリ時系列データ       │     │
-│  └────────────────────┘     └─────────────────────────────┘     │
-│                                                                   │
-│  ┌──────────────────────┐   ┌──────────────┐  ┌─────────────┐  │
-│  │  EventBridge (dev)   │   │   S3 (dev)   │  │  ECR (dev)  │  │
-│  └──────────────────────┘   └──────────────┘  └─────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-
-※ ローカルと本番 (prod) の差分
-  ローカル                         本番 (AWS prod)
-  ──────────────────────────────────────────────────────
-  uvicorn (FastAPI 直起動)    →    Lambda + API Gateway
-  Vite dev server             →    S3 + CloudFront
-  Docker Compose (emulator)   →    ECS Fargate
-  certs: volume mount         →    Secrets Manager
-  Cognito: スキップ可          →    Cognito JWT 認証必須
-  AWS_PROFILE=dev             →    Lambda IAM Role (prod)
-```
-
----
-
-### AWS 構成 (デモ / 本番環境)
-
-```
-  ブラウザ
-  ┌──────────────────────┐
-  │  Dashboard           │
-  │  (React + Vite)      │
-  └──────────┬───────────┘
-             │ HTTPS / WSS
-             ↓
-┌────────────────────────────────────────────────────────────────┐
-│                         AWS CLOUD                               │
-│                                                                  │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │  S3 + CloudFront          Cognito                         │ │
-│  │  ダッシュボード配信         ユーザー認証                     │ │
-│  └───────────────────────────────────────────────────────────┘ │
-│                                                                  │
-│  ┌─────────────────────────────────────┐                        │
-│  │  API Gateway                         │                        │
-│  │  ┌──────────────┐  ┌──────────────┐  │                        │
-│  │  │  HTTP API    │  │ WebSocket API│  │                        │
-│  │  │  (REST)      │  │ (リアルタイム)│  │                        │
-│  │  └──────┬───────┘  └──────┬───────┘  │                        │
-│  └─────────┼─────────────────┼──────────┘                        │
-│            ↓                 ↓                                   │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │  Lambda (FastAPI / Mangum)                                │   │
-│  │  ・ロボット管理 API                                        │   │
-│  │  ・コマンド送信          ──────────────────────────────┐  │   │
-│  │  ・テレメトリ取得                                        │  │   │
-│  │  ・スケジュール管理                                       │  │   │
-│  │  ・OTA 管理                                              │  │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│       │              │              │              │             │
-│       ↓              ↓              ↓              ↓             │
-│  ┌─────────┐  ┌───────────┐  ┌──────────┐  ┌───────────────┐   │
-│  │DynamoDB │  │Timestream │  │EventBridge│  │  IoT Jobs     │   │
-│  │ロボット  │  │テレメトリ  │  │スケジュール│  │  OTA 配信     │   │
-│  │状態管理  │  │時系列データ│  │トリガー   │  │               │   │
-│  └─────────┘  └───────────┘  └──────────┘  └───────────────┘   │
-│                                                                  │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │  AWS IoT Core                                             │ │
-│  │  MQTT Broker  ・IoT Registry  ・IoT Rules  ・Fleet Index  │ │
-│  └──────────────────────────────┬────────────────────────────┘ │
-│                                  │ MQTT/TLS                      │
-│  ┌───────────────────────────────┴───────────────────────────┐ │
-│  │  ECS Fargate (Robot Emulators)                            │ │
-│  │  ┌────────────┐  ┌────────────┐  ┌────────────┐          │ │
-│  │  │ robot-001  │  │ robot-002  │  │ robot-003  │  ...     │ │
-│  │  │ (Python)   │  │ (Python)   │  │ (Python)   │          │ │
-│  │  │            │  │            │  │            │          │ │
-│  │  │ 証明書:     │  │ 証明書:     │  │ 証明書:     │          │ │
-│  │  │ Secrets Mgr│  │ Secrets Mgr│  │ Secrets Mgr│          │ │
-│  │  └────────────┘  └────────────┘  └────────────┘          │ │
-│  └───────────────────────────────────────────────────────────┘ │
-│                                                                  │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │  ECR  (Dockerイメージ保存)   Secrets Manager (IoT証明書)  │ │
-│  └───────────────────────────────────────────────────────────┘ │
-└────────────────────────────────────────────────────────────────┘
+  ┌──────────────────────────────────────────────┐
+  │                                                │
+  │  Docker Compose (エミュレータ)                 │
+  │  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
+  │  │robot-001 │  │robot-002 │  │robot-003 │... │
+  │  │(Python)  │  │(Python)  │  │(Python)  │    │
+  │  │certs:vol │  │certs:vol │  │certs:vol │    │
+  │  └────┬─────┘  └────┬─────┘  └────┬─────┘    │
+  │       └─────────────┴─────────────┘           │
+  │                     │                         │
+  │  Vite dev (:5173)   │ MQTT/TLS (AWS IoT Core) │
+  │  ┌────────────────┐ │                         │
+  │  │React Dashboard │ │                         │
+  │  │VITE_API_URL=   │ │                         │
+  │  │  <apigw URL>   │ │                         │
+  │  └───────┬────────┘ │                         │
+  └──────────┼──────────┼─────────────────────────┘
+             │ HTTPS/WSS│
+             ↓          ↓
+┌────────────────────────────────────────────────────┐
+│  AWS CLOUD                                          │
+│                                                     │
+│  ┌─────────────────────┐   ┌─────────────────────┐ │
+│  │  API Gateway        │   │  AWS IoT Core        │ │
+│  │  HTTP API           │   │  MQTT Broker         │ │
+│  │  WebSocket API      │   │  IoT Registry        │ │
+│  └────────┬────────────┘   │  IoT Rules / Jobs    │ │
+│           ↓                └──────────┬───────────┘ │
+│  ┌─────────────────────┐             │              │
+│  │  Lambda             │    IoT Rule │(telemetry)   │
+│  │  (FastAPI / Mangum) │◄────────────┘              │
+│  │  ・ロボット管理 API  │                            │
+│  │  ・コマンド送信      │─── IoT publish ───────────►│
+│  │  ・テレメトリ取得    │                            │
+│  │  ・スケジュール管理  │                            │
+│  │  ・OTA 管理         │                            │
+│  └──────┬──────────────┘                            │
+│         │                                           │
+│  ┌──────┴──────┐  ┌────────────────┐               │
+│  │  DynamoDB   │  │  EventBridge   │               │
+│  │  ロボット状態│  │  スケジュール  │               │
+│  │ +テレメトリ  │  │  トリガー      │               │
+│  └─────────────┘  └────────────────┘               │
+└────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -146,30 +75,23 @@ robops_platform/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml                   # CI (lint + test)
-│       ├── deploy-frontend.yml      # フロントエンドデプロイ
-│       └── deploy-backend.yml       # バックエンドデプロイ
+│       └── deploy-backend.yml       # Lambda デプロイ
 │
 ├── infrastructure/                  # Terraform
 │   ├── environments/
-│   │   ├── dev/
-│   │   └── prod/
+│   │   └── dev/
 │   └── modules/
 │       ├── iot_core/
 │       ├── dynamodb/
-│       ├── timestream/
 │       ├── lambda/
 │       ├── api_gateway/
-│       ├── eventbridge/
-│       ├── s3_cloudfront/
-│       ├── cognito/
-│       └── ecs_emulator/            # ECS Fargate ロボットエミュレータ
+│       └── eventbridge/
 │
 ├── backend/                         # Python FastAPI
 │   ├── app/
 │   │   ├── main.py                  # FastAPI エントリポイント
 │   │   ├── api/
-│   │   │   ├── robots.py            # ロボット管理API
-│   │   │   ├── commands.py          # コマンド送信API
+│   │   │   ├── robots.py            # ロボット管理API + コマンド送信API
 │   │   │   ├── telemetry.py         # テレメトリAPI
 │   │   │   ├── schedules.py         # スケジュールAPI
 │   │   │   └── ota.py               # OTA管理API
@@ -179,12 +101,12 @@ robops_platform/
 │   │   ├── services/
 │   │   │   ├── iot_service.py       # AWS IoT Core操作
 │   │   │   ├── dynamodb_service.py
-│   │   │   ├── timestream_service.py
+│   │   │   ├── telemetry_service.py # テレメトリ (DynamoDB に保存)
 │   │   │   └── scheduler_service.py
 │   │   └── websocket/
 │   │       └── handler.py           # WebSocket Lambda
 │   ├── lambda_handlers/
-│   │   ├── telemetry_processor.py   # IoT Rule → DynamoDB/Timestream
+│   │   ├── telemetry_processor.py   # IoT Rule → DynamoDB
 │   │   ├── websocket_broadcaster.py # DynamoDB Stream → WebSocket
 │   │   └── scheduler_trigger.py    # EventBridge → IoT command
 │   ├── tests/
@@ -207,12 +129,15 @@ robops_platform/
     │   ├── main.tsx
     │   ├── App.tsx
     │   ├── components/
-    │   │   ├── FleetMap/             # フロアマップ + ロボット位置
+    │   │   ├── FleetMap/             # 3D フロアマップ + ロボット位置 (Three.js)
+    │   │   │   ├── FleetMap.tsx      # re-export
+    │   │   │   └── FleetMap3D.tsx    # @react-three/fiber 実装
     │   │   ├── RobotCard/            # 個別ロボット情報カード
     │   │   ├── TelemetryChart/       # バッテリー・速度グラフ
     │   │   ├── CommandPanel/         # コマンド送信UI
     │   │   ├── ScheduleManager/      # スケジュール管理
-    │   │   └── OTAManager/           # OTAアップデートUI
+    │   │   ├── OTAManager/           # OTAアップデートUI
+    │   │   └── common/               # 共通コンポーネント
     │   ├── hooks/
     │   │   ├── useRobots.ts
     │   │   ├── useWebSocket.ts
@@ -224,7 +149,7 @@ robops_platform/
     ├── package.json
     ├── vite.config.ts
     ├── tsconfig.json
-    └── .eslintrc.json
+    └── biome.json                    # Biome (linter/formatter, ESLint の代替)
 ```
 
 ---
@@ -249,7 +174,9 @@ robops_platform/
   "position": {"x": 3.2, "y": 1.8, "room": "living_room"},
   "speed": 0.5,
   "status": "CLEANING",
-  "error_code": null
+  "firmware_version": "1.0.0",
+  "error_code": null,
+  "cleaning_progress": 42.0
 }
 ```
 
@@ -308,13 +235,14 @@ robops_platform/
 |------|------------|
 | AWS IoT Core | フルマネージド。数百万デバイスに対応。追加設定不要 |
 | DynamoDB | On-Demand Capacity。書き込み/読み込みが自動スケール |
-| Timestream | サーバーレス時系列DB。IoTテレメトリに最適化 |
 | Lambda | 同時実行数を自動スケール（デフォルト上限1000→申請で拡張可） |
 | API Gateway | 完全マネージド。秒間数万リクエスト対応 |
 | IoT Fleet Indexing | フリート横断クエリ（"battery < 20% のロボット全台"等） |
 | IoT Jobs | 大規模デバイスへのOTA一括配信。ロールアウト戦略設定可 |
 
 ### DynamoDBテーブル設計
+
+テレメトリ時系列データは Timestream を使わず **DynamoDB に直接保存**する。
 
 **robots テーブル**
 ```
@@ -323,6 +251,14 @@ SK: -
 Attributes: name, status, battery_level, position, speed,
             firmware_version, last_seen, room_assignment
 GSI: status-index (status → robot_id でフリートフィルタ)
+```
+
+**telemetry テーブル**
+```
+PK: robot_id (String)
+SK: timestamp (String, ISO8601)
+Attributes: battery_level, speed, status, room, position_x, position_y
+TTL: ttl (24時間で自動削除)
 ```
 
 **schedules テーブル**
@@ -361,13 +297,11 @@ Attributes: firmware_version, status, progress, started_at, completed_at
 
 ### WebSocket API (リアルタイム通知)
 
-| Action | 説明 |
+| 種別 | 説明 |
 |--------|------|
-| `connect` | 接続時: 全ロボット現在状態を送信 |
-| `subscribe_robot` | 特定ロボットのリアルタイム更新を購読 |
-| `telemetry_update` | テレメトリ更新通知 (Server→Client) |
-| `status_change` | ロボット状態変化通知 (Server→Client) |
-| `alert` | 低バッテリーアラート通知 (Server→Client) |
+| クライアント→サーバー | `subscribe_robot`: ロボット更新の購読開始（接続後送信すると全ロボット現在状態を取得） |
+| サーバー→クライアント | `initial_state`: 接続時または subscribe_robot 受信時、全ロボットの現在状態を一括送信 |
+| サーバー→クライアント | `robot_update`: 1 台のロボット状態が更新されたときにそのロボットの最新状態を送信 |
 
 ---
 
@@ -408,7 +342,10 @@ Attributes: firmware_version, status, progress, started_at, completed_at
 ## フロントエンド画面設計
 
 ### 1. フリートダッシュボード (メイン画面)
-- フロアマップ上に全ロボットの現在位置をリアルタイム表示
+- **3D フロアマップ** (@react-three/fiber) 上に全ロボットの現在位置をリアルタイム表示
+  - ロボットはステータス色の3Dメッシュ（ボディ＋ドーム）で表現
+  - lerp による位置スムージング (LERP_SPEED=12)
+  - ドラッグで視点回転、スクロールでズーム (OrbitControls)
 - 各ロボットのステータスバッジ (色分け)
 - バッテリー残量の一覧
 - アクティブアラート表示
@@ -437,13 +374,11 @@ Attributes: firmware_version, status, progress, started_at, completed_at
 
 **CI (全ブランチ・PR)**
 - Python: `uv run ruff check` (lint) + `uv run pytest` (unit tests)
-- TypeScript: ESLint + Vitest
+- TypeScript: **Biome** (lint/format) + Vitest
 - Terraform: fmt check + validate + tflint
 
 **CD (mainブランチマージ時)**
-- Backend: `uv export` で requirements.txt 生成 → Lambda ZIP → S3アップロード → Lambda更新
-- Frontend: `npm run build` → S3アップロード → CloudFrontキャッシュ無効化
-- Infrastructure: `terraform apply` (planをCIで確認済み)
+- Backend: `uv export` で requirements.txt 生成 → Lambda ZIP → Lambda更新 (`deploy-backend.yml`)
 
 **Python 環境管理ルール**
 - `pip` は使わない。すべて `uv` で統一
@@ -458,47 +393,24 @@ Attributes: firmware_version, status, progress, started_at, completed_at
 
 ### 動作概要
 - 各エミュレータはAWS IoT Coreに接続 (TLS証明書認証)
-- 1秒ごとにテレメトリを送信
+- デフォルト 2 秒ごとにテレメトリを送信 (`TELEMETRY_INTERVAL` 環境変数で変更可)
 - コマンドトピックを購読し、受信時に状態遷移
 - バッテリーは時間経過で減少 (掃除中は速く、充電中は増加)
-- 部屋内をランダムに移動する位置シミュレーション
+  - 消費レート: 0.0084 %/s × elapsed × 60（1部屋で約50%消費）
+  - 充電レート: 0.083 %/s × elapsed × 60（約10分でフル充電）
+- **バウストロフェドン（ジグザグ往復）経路**で部屋を網羅的に掃除
+  - Y方向にストリップ幅 0.35m で往復、壁から 0.25m のマージンを保持
+- 実機を想定した物理挙動を遵守
+  - 掃除開始時は現在位置（ドック等）から物理的に移動して第1ウェイポイントへ向かう（瞬間移動なし）
+  - RETURNING_TO_DOCK 時も現在位置から直線的にドックへ移動
+  - OTA 適用は速度パラメータの変更（`max_speed`: 0.1〜2.0 m/s）
 
 ### 実行環境
 
-| 環境 | 動かし方 | 用途 |
-|------|---------|------|
-| ローカル開発 | `docker-compose up` | 開発・デバッグ |
-| AWS (デモ/本番) | ECS Fargate | 常時稼働デモ |
+Docker Compose でローカル起動する。証明書は `emulator/certs/<robot_id>/` にボリュームマウント。
 
-同一のDockerイメージを両環境で使用する。証明書はローカルではボリュームマウント、ECS では AWS Secrets Manager から取得。
-
-### Docker Compose 構成 (ローカル開発用)
-```yaml
-services:
-  robot-001:
-    image: robops/robot-emulator
-    environment:
-      ROBOT_ID: robot-001
-      AWS_IOT_ENDPOINT: xxx.iot.ap-northeast-1.amazonaws.com
-      CERT_SOURCE: volume   # ローカルはボリューム
-    volumes:
-      - ./certs/robot-001:/certs
-  robot-002:
-    ...
-```
-
-### ECS Fargate 構成 (デモ/本番環境)
-- ECR にDockerイメージをプッシュ
-- ECS タスク定義: robot-001〜robot-005 それぞれ独立したタスク
-- 証明書は **AWS Secrets Manager** に格納し、タスク起動時に環境変数として注入
-- ECS Service で常時1タスク稼働 (障害時は自動再起動)
-- スケールアウト時は ECS タスク数を増やすだけ
-
-```
-Secrets Manager
-  └── /robops/certs/robot-001/ca      → ECS env: IOT_CA_CERT
-  └── /robops/certs/robot-001/cert    → ECS env: IOT_CERT
-  └── /robops/certs/robot-001/key     → ECS env: IOT_PRIVATE_KEY
+```bash
+cd emulator && docker compose up -d
 ```
 
 ---
@@ -509,9 +421,7 @@ Secrets Manager
 |------|------|
 | ロボット認証 | X.509証明書 (IoT Thing Certificate) |
 | IoTポリシー | 各ロボットは自分のトピックのみ pub/sub 可 |
-| API認証 | Cognito JWT (ダッシュボードログイン) |
-| 証明書管理 (ローカル) | `emulator/certs/` に配置 (git-ignored) |
-| 証明書管理 (ECS) | AWS Secrets Manager に格納、タスク起動時に注入 |
+| 証明書管理 | `emulator/certs/` に配置 (git-ignored) |
 | 通信暗号化 | MQTT over TLS 1.2、HTTPS のみ |
 
 ---
@@ -519,20 +429,20 @@ Secrets Manager
 ## 実装ステップ
 
 ### Phase 1: 基盤構築 (Step 1-3)
-1. **プロジェクト初期化** - ディレクトリ構造、git、CI/CD設定、Linting
-2. **Terraform基盤** - IoT Core、DynamoDB、Timestream、Lambda、API Gateway
-3. **ロボットエミュレータ** - Docker Compose + Python MQTT クライアント
+1. ✅ **プロジェクト初期化** - ディレクトリ構造、git、CI/CD設定、Linting (Biome)
+2. ✅ **Terraform基盤** - IoT Core、DynamoDB、Lambda、API Gateway
+3. ✅ **ロボットエミュレータ** - Docker Compose + Python MQTT クライアント + バウストロフェドン経路
 
 ### Phase 2: バックエンド (Step 4-5)
-4. **FastAPI バックエンド** - Lambda関数、REST API、IoT連携
-5. **Lambda IoT処理** - テレメトリ処理、WebSocket通知、スケジューラー
+4. ✅ **FastAPI バックエンド** - Lambda/Mangum 両対応、REST API、IoT連携
+5. ✅ **Lambda IoT処理** - テレメトリ処理、WebSocket通知、スケジューラー
 
 ### Phase 3: フロントエンド (Step 6-7)
-6. **Reactダッシュボード基盤** - フリートマップ、ロボットカード、リアルタイム
-7. **高度UI** - グラフ、スケジュール管理、OTA管理
+6. ✅ **Reactダッシュボード基盤** - 3D フリートマップ (Three.js)、ロボットカード、リアルタイム
+7. ✅ **高度UI + 結合テスト** - グラフ、スケジュール管理、OTA管理、Lambda バグ修正
 
 ### Phase 4: 統合・完成 (Step 8)
-8. **E2E統合テスト** - エミュレータ↔IoT↔API↔ダッシュボード動作確認
+8. 🔲 **E2E統合テスト** - エミュレータ↔IoT↔API↔ダッシュボード動作確認
 
 ---
 
@@ -540,16 +450,18 @@ Secrets Manager
 
 | カテゴリ | 技術 |
 |---------|------|
-| フロントエンド | React 18, Vite, TypeScript, TanStack Query, Recharts, Tailwind CSS |
+| フロントエンド | React 19, Vite 8, TypeScript, TanStack Query v5, Recharts v3, Tailwind CSS v4 |
+| **3D レンダリング** | **Three.js, @react-three/fiber v9, @react-three/drei v10** |
 | バックエンド | Python 3.12, FastAPI, Mangum, Pydantic v2, boto3 |
 | **Python パッケージ管理** | **uv** (仮想環境・依存関係管理・スクリプト実行すべて uv で統一) |
-| IoT | AWS IoT Core, MQTT (paho-mqtt / AWSIoTPythonSDK v2), AWS IoT Jobs |
-| データベース | DynamoDB (状態管理), Amazon Timestream (時系列) |
-| インフラ | Terraform 1.7+, AWS Lambda, API Gateway v2, EventBridge, S3, CloudFront, Cognito, ECS Fargate, ECR, Secrets Manager |
-| CI/CD | GitHub Actions, Ruff, ESLint, pytest, Vitest, tflint |
-| エミュレータ | Docker Compose (ローカル), ECS Fargate (AWS), Python |
+| IoT | AWS IoT Core, MQTT (AWSIoTPythonSDK v2 / awscrt), AWS IoT Jobs |
+| データベース | DynamoDB (ロボット状態 + テレメトリ履歴) |
+| インフラ | Terraform 1.7+, AWS Lambda, API Gateway v2, EventBridge, DynamoDB, AWS IoT Core |
+| CI/CD | GitHub Actions, Ruff, **Biome** (ESLint の代替), pytest, Vitest, tflint |
+| エミュレータ | Docker Compose, Python |
 
 ---
 
 *作成日: 2024年*
-*バージョン: 1.0*
+*最終更新: 2026-03-14*
+*バージョン: 1.2*

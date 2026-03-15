@@ -50,20 +50,6 @@ module "dynamodb" {
   tags   = local.common_tags
 }
 
-# ─── Timestream ─────────────────────────────────────────
-
-module "timestream" {
-  source = "../../modules/timestream"
-  env    = local.env
-  prefix = local.prefix
-
-  # dev は短めの保存期間
-  memory_store_retention_hours  = 24
-  magnetic_store_retention_days = 7
-
-  tags = local.common_tags
-}
-
 # ─── Cognito ────────────────────────────────────────────
 
 module "cognito" {
@@ -95,15 +81,19 @@ module "lambda" {
   dynamodb_schedules_table_arn       = module.dynamodb.schedules_table_arn
   dynamodb_ota_jobs_table_arn        = module.dynamodb.ota_jobs_table_arn
   dynamodb_ws_connections_table_arn  = module.dynamodb.websocket_connections_table_arn
+  dynamodb_telemetry_table_name      = module.dynamodb.telemetry_table_name
+  dynamodb_telemetry_table_arn       = module.dynamodb.telemetry_table_arn
   dynamodb_robots_stream_arn         = module.dynamodb.robots_stream_arn
-
-  timestream_database_name = module.timestream.database_name
-  timestream_table_name    = module.timestream.table_name
 
   ota_firmware_bucket_name = module.s3_cloudfront.ota_firmware_bucket_name
   ota_firmware_bucket_arn  = module.s3_cloudfront.ota_firmware_bucket_arn
 
   cognito_user_pool_arn = module.cognito.user_pool_arn
+
+  iot_endpoint                   = var.iot_endpoint
+  eventbridge_scheduler_role_arn = module.eventbridge.scheduler_role_arn
+  eventbridge_schedule_group     = module.eventbridge.schedule_group_name
+  websocket_api_endpoint         = module.api_gateway.websocket_api_endpoint
 
   tags = local.common_tags
 }
@@ -122,6 +112,8 @@ module "api_gateway" {
   websocket_lambda_invoke_arn = module.lambda.websocket_invoke_arn
 
   cognito_user_pool_arn = module.cognito.user_pool_arn
+  cognito_user_pool_id  = module.cognito.user_pool_id
+  cognito_client_id     = module.cognito.client_id
 
   tags = local.common_tags
 }

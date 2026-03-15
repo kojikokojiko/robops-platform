@@ -29,7 +29,8 @@ resource "aws_iot_policy" "robot" {
         Effect = "Allow"
         Action = ["iot:Publish"]
         Resource = [
-          "arn:aws:iot:*:*:topic/robots/$${iot:Connection.Thing.ThingName}/*"
+          "arn:aws:iot:*:*:topic/robots/$${iot:Connection.Thing.ThingName}/*",
+          "arn:aws:iot:*:*:topic/$aws/things/$${iot:Connection.Thing.ThingName}/jobs/*"
         ]
       },
       {
@@ -136,10 +137,6 @@ resource "aws_iot_indexing_configuration" "main" {
   thing_indexing_configuration {
     thing_indexing_mode              = "REGISTRY_AND_SHADOW"
     thing_connectivity_indexing_mode = "STATUS"
-
-    managed_field {
-      name = "connectivity.connected"
-    }
   }
 }
 

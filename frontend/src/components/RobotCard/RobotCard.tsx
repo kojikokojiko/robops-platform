@@ -1,19 +1,17 @@
-import { useNavigate } from 'react-router-dom';
 import type { Robot } from '../../types/robot';
 import { BatteryBar } from '../common/BatteryBar';
 import { StatusBadge } from '../common/StatusBadge';
 
 interface Props {
   robot: Robot;
+  onSelect?: (robotId: string) => void;
 }
 
-export function RobotCard({ robot }: Props) {
-  const navigate = useNavigate();
-
+export function RobotCard({ robot, onSelect }: Props) {
   return (
     <button
       type="button"
-      onClick={() => navigate(`/robots/${robot.robot_id}`)}
+      onClick={() => onSelect?.(robot.robot_id)}
       className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-200 hover:shadow-md"
     >
       <div className="mb-3 flex items-center justify-between">

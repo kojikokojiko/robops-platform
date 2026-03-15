@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { RobotCommand } from '../types/robot';
 
@@ -6,7 +6,7 @@ export function useRobots() {
   return useQuery({
     queryKey: ['robots'],
     queryFn: api.robots.list,
-    refetchInterval: 5000, // WebSocket が切れても5秒ごとにポーリング
+    // refetchInterval は無効化 — WebSocket のみで更新
   });
 }
 
@@ -19,11 +19,8 @@ export function useRobot(robotId: string) {
 }
 
 export function useSendCommand(robotId: string) {
-  const qc = useQueryClient();
   return useMutation({
     mutationFn: (cmd: RobotCommand) => api.robots.sendCommand(robotId, cmd),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['robots', robotId] });
-    },
+    // 更新は WebSocket (robot_update) 経由で届くため REST 再取得は不要
   });
 }

@@ -16,7 +16,6 @@ interface Props {
 
 export function CommandPanel({ robot }: Props) {
   const [selectedRoom, setSelectedRoom] = useState('living_room');
-  const [speed, setSpeed] = useState(robot.speed || 0.5);
   const { mutate: sendCommand, isPending } = useSendCommand(robot.robot_id);
 
   const canClean = robot.status === 'IDLE' && robot.battery_level > 20;
@@ -80,35 +79,6 @@ export function CommandPanel({ robot }: Props) {
           {robot.battery_level < 20 ? '⚡ 充電ドックへ戻す' : '充電ドックへ戻す'}
         </button>
 
-        {/* 速度設定 */}
-        <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-          <label htmlFor="speed-range" className="mb-2 block text-xs font-medium text-slate-600">
-            速度設定: <strong>{speed.toFixed(1)} m/s</strong>
-          </label>
-          <input
-            id="speed-range"
-            type="range"
-            min={0.1}
-            max={2.0}
-            step={0.1}
-            value={speed}
-            onChange={(e) => setSpeed(parseFloat(e.target.value))}
-            className="w-full accent-blue-500"
-            disabled={isPending}
-          />
-          <div className="mt-1 flex justify-between text-xs text-slate-400">
-            <span>0.1</span>
-            <span>2.0 m/s</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => sendCommand({ command: 'SET_SPEED', params: { speed } })}
-            disabled={isPending}
-            className="mt-2 w-full rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-300 disabled:opacity-40"
-          >
-            速度を適用
-          </button>
-        </div>
       </div>
     </div>
   );

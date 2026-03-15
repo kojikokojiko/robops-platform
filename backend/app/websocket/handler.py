@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import time
+from decimal import Decimal
 from typing import Any
 
 import boto3
@@ -65,10 +66,19 @@ def _on_message(connection_id: str, body: str) -> dict[str, Any]:
 def _send_current_state(connection_id: str) -> None:
     """現在の全ロボット状態を送信"""
     robots = db.get_all_robots()
+    # REST API (Robot Pydantic model) に合わせてデフォルト値を補完
+    for r in robots:
+        r.setdefault("name", "")
     _post_to_connection(
         connection_id,
         {"type": "initial_state", "robots": robots},
     )
+
+
+def _json_default(obj: Any) -> Any:
+    if isinstance(obj, Decimal):
+        return float(obj)
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
 
 def _post_to_connection(connection_id: str, payload: dict[str, Any]) -> None:
@@ -78,15 +88,18 @@ def _post_to_connection(connection_id: str, payload: dict[str, Any]) -> None:
         logger.warning("WEBSOCKET_API_ENDPOINT not set, skipping push")
         return
 
+    # apigatewaymanagementapi は https:// が必要
+    https_endpoint = ws_endpoint.replace("wss://", "https://").replace("ws://", "http://")
+
     apigw = boto3.client(
         "apigatewaymanagementapi",
-        endpoint_url=ws_endpoint,
+        endpoint_url=https_endpoint,
         region_name=_region,
     )
     try:
         apigw.post_to_connection(
             ConnectionId=connection_id,
-            Data=json.dumps(payload),
+            Data=json.dumps(payload, default=_json_default),
         )
     except apigw.exceptions.GoneException:
         logger.info("Connection %s is gone, removing", connection_id)

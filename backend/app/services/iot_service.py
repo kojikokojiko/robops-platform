@@ -76,6 +76,15 @@ def get_job_status(job_id: str) -> dict[str, Any]:
     return resp.get("job", {})
 
 
+def get_job_execution_status(job_id: str, robot_id: str) -> str | None:
+    """ロボットごとの IoT Job 実行ステータスを取得"""
+    try:
+        resp = _iot_client().describe_job_execution(jobId=job_id, thingName=robot_id)
+        return resp.get("execution", {}).get("status")
+    except Exception:
+        return None
+
+
 def list_things() -> list[dict[str, Any]]:
     resp = _iot_client().list_things()
     return resp.get("things", [])

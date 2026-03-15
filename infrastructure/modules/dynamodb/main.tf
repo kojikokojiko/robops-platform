@@ -88,6 +88,31 @@ resource "aws_dynamodb_table" "ota_jobs" {
   tags = merge(var.tags, { Name = "${local.name}-ota-jobs" })
 }
 
+# テレメトリ履歴テーブル (robot_id + timestamp, TTL 24h)
+resource "aws_dynamodb_table" "telemetry" {
+  name         = "${local.name}-telemetry"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "robot_id"
+  range_key    = "timestamp"
+
+  attribute {
+    name = "robot_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "timestamp"
+    type = "S"
+  }
+
+  ttl {
+    attribute_name = "ttl"
+    enabled        = true
+  }
+
+  tags = merge(var.tags, { Name = "${local.name}-telemetry" })
+}
+
 # WebSocket 接続管理テーブル
 resource "aws_dynamodb_table" "websocket_connections" {
   name         = "${local.name}-ws-connections"

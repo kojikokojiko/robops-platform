@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import math
-import random
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -58,6 +57,38 @@ ROOMS: dict[str, tuple[float, float, float, float]] = {
 
 DOCK_POSITION = Position(x=0.5, y=0.5, room="charging_dock")
 
+# バウストロフェドンのストリップ幅 (ロボット直径 ≈ 0.3m、少し重ねる)
+STRIP_WIDTH = 0.35
+MARGIN = 0.25  # 壁からのマージン
+ARRIVAL_THRESHOLD = 0.15  # この距離以下で「到達」とみなす
+
+
+def _boustrophedon_path(room: str) -> list[Position]:
+    """
+    指定部屋のバウストロフェドン（ジグザグ往復）経路を生成する。
+    Y 方向にストリップを並べ、X 方向を交互に往復する。
+    """
+    x0, y0, x1, y1 = ROOMS[room]
+    xmin, xmax = x0 + MARGIN, x1 - MARGIN
+    ymin, ymax = y0 + MARGIN, y1 - MARGIN
+
+    waypoints: list[Position] = []
+
+    y = ymin
+    left_to_right = True
+    while y <= ymax + 1e-6:
+        y_clamped = min(y, ymax)
+        if left_to_right:
+            waypoints.append(Position(x=xmin, y=y_clamped, room=room))
+            waypoints.append(Position(x=xmax, y=y_clamped, room=room))
+        else:
+            waypoints.append(Position(x=xmax, y=y_clamped, room=room))
+            waypoints.append(Position(x=xmin, y=y_clamped, room=room))
+        left_to_right = not left_to_right
+        y += STRIP_WIDTH
+
+    return waypoints
+
 
 @dataclass
 class RobotState:
@@ -72,12 +103,13 @@ class RobotState:
 
     # 内部状態
     _last_tick: float = field(default_factory=time.time, repr=False)
-    _target_position: Position | None = field(default=None, repr=False)
+    _waypoints: list[Position] = field(default_factory=list, repr=False)
+    _waypoint_index: int = field(default=0, repr=False)
     _cleaning_progress: float = field(default=0.0, repr=False)  # 0-100%
 
     # 設定
-    battery_drain_rate: float = 0.05   # % / tick
-    battery_charge_rate: float = 0.2   # % / tick
+    battery_drain_rate: float = 0.0084  # % / s → 1部屋掃除で約50%消費
+    battery_charge_rate: float = 0.083  # % / s → 約10分でフル充電
     low_battery_threshold: float = 20.0
     max_speed: float = 0.5  # m/s (OTA で変更される)
 
@@ -105,11 +137,9 @@ class RobotState:
         self.status = RobotStatus.UPDATING
         self.speed = 0.0
 
-        # OTA 適用
         self.max_speed = new_speed
         self.firmware_version = new_version
 
-        # 掃除中だった場合は再開、それ以外は IDLE に戻る
         if prev_status == RobotStatus.CLEANING:
             self.status = RobotStatus.CLEANING
             self.speed = self.max_speed
@@ -132,7 +162,6 @@ class RobotState:
         elif self.status == RobotStatus.RETURNING_TO_DOCK:
             self._tick_returning(elapsed)
         elif self.status == RobotStatus.LOW_BATTERY:
-            # 低バッテリーでは自動的にドックへ戻る
             self._cmd_return_to_dock()
 
     def to_telemetry(self) -> dict[str, Any]:
@@ -146,6 +175,7 @@ class RobotState:
             "status": self.status.value,
             "firmware_version": self.firmware_version,
             "error_code": self.error_code,
+            "cleaning_progress": round(self._cleaning_progress, 1),
         }
 
     # ─── 内部コマンドハンドラ ──────────────────────────────
@@ -156,12 +186,17 @@ class RobotState:
         if self.battery_level <= self.low_battery_threshold:
             return False
 
-        room = room_id if room_id in ROOMS else _random_room()
+        room = room_id if room_id in ROOMS and room_id != "charging_dock" else _random_room()
         self.current_room = room
         self.status = RobotStatus.CLEANING
         self.speed = self.max_speed
         self._cleaning_progress = 0.0
-        self._target_position = _random_position_in_room(room)
+
+        # バウストロフェドン経路を生成
+        # 現在位置はそのまま — ロボットが物理的に移動してウェイポイントへ向かう
+        self._waypoints = _boustrophedon_path(room)
+        self._waypoint_index = 0
+
         return True
 
     def _cmd_stop_cleaning(self) -> bool:
@@ -170,6 +205,8 @@ class RobotState:
         self.status = RobotStatus.IDLE
         self.speed = 0.0
         self.current_room = None
+        self._waypoints = []
+        self._waypoint_index = 0
         return True
 
     def _cmd_return_to_dock(self) -> bool:
@@ -177,7 +214,8 @@ class RobotState:
             return False
         self.status = RobotStatus.RETURNING_TO_DOCK
         self.speed = self.max_speed * 0.8
-        self._target_position = DOCK_POSITION
+        self._waypoints = [DOCK_POSITION]
+        self._waypoint_index = 0
         return True
 
     def _cmd_set_speed(self, speed: float) -> bool:
@@ -198,18 +236,37 @@ class RobotState:
             self.speed = 0.0
             return
 
-        # 位置移動
-        if self._target_position:
-            self._move_toward(self._target_position, elapsed)
-            if self.position.distance_to(self._target_position) < 0.2:
-                # 目標地点到達 → 次のランダム地点へ
-                room = self.current_room or "living_room"
-                self._target_position = _random_position_in_room(room)
-
-        # 掃除進捗 (60秒で1部屋完了)
-        self._cleaning_progress = min(100.0, self._cleaning_progress + elapsed / 60.0 * 100.0)
-        if self._cleaning_progress >= 100.0:
+        # ウェイポイントがなければ完了
+        if not self._waypoints or self._waypoint_index >= len(self._waypoints):
             self._cmd_stop_cleaning()
+            return
+
+        # 現在のウェイポイントに到達するまで移動（同tick内で連続処理）
+        remaining = elapsed
+        while remaining > 0 and self._waypoint_index < len(self._waypoints):
+            target = self._waypoints[self._waypoint_index]
+            dist = self.position.distance_to(target)
+
+            if dist < ARRIVAL_THRESHOLD:
+                # ウェイポイント到達 → スナップして次へ
+                self.position.x = target.x
+                self.position.y = target.y
+                self.position.room = target.room
+                self._waypoint_index += 1
+                total = len(self._waypoints)
+                self._cleaning_progress = min(100.0, self._waypoint_index / total * 100.0)
+                if self._waypoint_index >= total:
+                    self._cleaning_progress = 100.0
+                    self._cmd_stop_cleaning()
+                    return
+                # 残り時間で次のウェイポイントへ向かう
+                continue
+
+            step = min(self.speed * remaining, dist)
+            time_used = step / self.speed if self.speed > 0 else remaining
+            self._move_toward(target, time_used)
+            remaining -= time_used
+            break
 
     def _tick_charging(self, elapsed: float) -> None:
         self.battery_level = min(100.0, self.battery_level + self.battery_charge_rate * elapsed * 60)
@@ -218,17 +275,16 @@ class RobotState:
             self.status = RobotStatus.IDLE
 
     def _tick_returning(self, elapsed: float) -> None:
-        # バッテリーも少しずつ消耗
         self.battery_level = max(0.0, self.battery_level - self.battery_drain_rate * 0.5 * elapsed * 60)
 
-        if self._target_position:
-            self._move_toward(self._target_position, elapsed)
-            if self.position.distance_to(self._target_position) < 0.3:
-                # ドック到達
+        if self._waypoints:
+            target = self._waypoints[0]
+            self._move_toward(target, elapsed)
+            if self.position.distance_to(target) < 0.3:
                 self.position = Position(x=DOCK_POSITION.x, y=DOCK_POSITION.y, room="charging_dock")
                 self.status = RobotStatus.CHARGING
                 self.speed = 0.0
-                self._target_position = None
+                self._waypoints = []
 
     def _move_toward(self, target: Position, elapsed: float) -> None:
         dist = self.position.distance_to(target)
@@ -238,21 +294,12 @@ class RobotState:
         ratio = step / dist
         self.position.x += (target.x - self.position.x) * ratio
         self.position.y += (target.y - self.position.y) * ratio
-        # 現在いる部屋を更新
         self.position.room = _room_at(self.position.x, self.position.y)
 
 
 def _random_room() -> str:
+    import random
     return random.choice([r for r in ROOMS if r != "charging_dock"])  # noqa: S311
-
-
-def _random_position_in_room(room: str) -> Position:
-    x0, y0, x1, y1 = ROOMS[room]
-    return Position(
-        x=random.uniform(x0 + 0.2, x1 - 0.2),  # noqa: S311
-        y=random.uniform(y0 + 0.2, y1 - 0.2),  # noqa: S311
-        room=room,
-    )
 
 
 def _room_at(x: float, y: float) -> str:
