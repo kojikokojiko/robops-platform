@@ -162,11 +162,17 @@ Lambda へのデプロイは CI/CD を使わず、以下の手順でローカル
 ```bash
 cd backend
 uv export --no-dev -o requirements.txt
-pip install -r requirements.txt -t dist/
+pip install -r requirements.txt -t dist/ \
+  --platform manylinux2014_aarch64 \
+  --only-binary=:all:
 cp -r app dist/
 cp -r lambda_handlers dist/
 cd dist && zip -r ../lambda.zip .
 ```
+
+> **注意**: Lambda は `arm64` (Graviton2) で動いている。Mac (Apple Silicon / Intel) からビルドする場合、`pydantic-core` など C 拡張を含むパッケージはそのままでは動かない。
+> `--platform manylinux2014_aarch64 --only-binary=:all:` を付けることで Linux ARM64 用のバイナリが取得され、Lambda 上で正しく動作する。
+> これを付け忘れると Lambda 起動時に `No module named 'pydantic_core._pydantic_core'` などのエラーで全 API が 500 になる。
 
 ### 2. S3 にアップロード
 
