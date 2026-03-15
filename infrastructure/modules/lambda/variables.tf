@@ -76,12 +76,6 @@ variable "iot_endpoint" {
   type = string
 }
 
-variable "scheduler_trigger_lambda_arn" {
-  type        = string
-  description = "Scheduler trigger Lambda ARN (passed after creation to avoid circular dep)"
-  default     = ""
-}
-
 variable "eventbridge_scheduler_role_arn" {
   type = string
 }

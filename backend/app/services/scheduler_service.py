@@ -27,6 +27,7 @@ def create_schedule(
         Name=name,
         GroupName=_GROUP(),
         ScheduleExpression=cron_expression,
+        ScheduleExpressionTimezone="Asia/Tokyo",
         FlexibleTimeWindow={"Mode": "OFF"},
         Target={
             "Arn": _TRIGGER_ARN(),
@@ -54,6 +55,7 @@ def toggle_schedule(schedule_id: str, enabled: bool) -> None:
         Name=name,
         GroupName=_GROUP(),
         ScheduleExpression=resp["ScheduleExpression"],
+        ScheduleExpressionTimezone=resp.get("ScheduleExpressionTimezone", "Asia/Tokyo"),
         FlexibleTimeWindow=resp["FlexibleTimeWindow"],
         Target=resp["Target"],
         State="ENABLED" if enabled else "DISABLED",

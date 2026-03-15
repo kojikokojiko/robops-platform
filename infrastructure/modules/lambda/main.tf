@@ -10,7 +10,7 @@ locals {
     DYNAMODB_TABLE_TELEMETRY         = var.dynamodb_telemetry_table_name
     OTA_FIRMWARE_BUCKET              = var.ota_firmware_bucket_name
     IOT_ENDPOINT                     = var.iot_endpoint
-    SCHEDULER_TRIGGER_LAMBDA_ARN     = var.scheduler_trigger_lambda_arn
+    SCHEDULER_TRIGGER_LAMBDA_ARN     = aws_lambda_function.scheduler_trigger.arn
     EVENTBRIDGE_SCHEDULER_ROLE_ARN   = var.eventbridge_scheduler_role_arn
     EVENTBRIDGE_SCHEDULE_GROUP       = var.eventbridge_schedule_group
     WEBSOCKET_API_ENDPOINT           = var.websocket_api_endpoint
