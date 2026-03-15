@@ -150,23 +150,43 @@ AWS_PROFILE=dev
 | ワークフロー | トリガー | 内容 |
 |------------|---------|------|
 | `ci.yml` | 全ブランチ push / PR | lint + test + terraform plan |
-| `deploy-backend.yml` | main ブランチ push (backend/) | Lambda デプロイ |
-| `deploy-frontend.yml` | main ブランチ push (frontend/) | S3 + CloudFront デプロイ |
-| `deploy-emulator.yml` | main ブランチ push (emulator/) | ECR push + ECS rolling deploy |
 
-GitHub Secrets に以下を設定:
+---
 
-| Secret | 説明 |
-|--------|------|
-| `AWS_ACCESS_KEY_ID` | デプロイ用 IAM アクセスキー |
-| `AWS_SECRET_ACCESS_KEY` | デプロイ用 IAM シークレット |
-| `LAMBDA_ARTIFACTS_BUCKET` | Lambda ZIP 保存用 S3 バケット名 |
-| `FRONTEND_BUCKET` | フロントエンド配信用 S3 バケット名 |
-| `CLOUDFRONT_DISTRIBUTION_ID` | CloudFront ディストリビューション ID |
-| `VITE_API_URL` | 本番 API Gateway URL |
-| `VITE_WS_URL` | 本番 WebSocket URL |
-| `VITE_COGNITO_USER_POOL_ID` | Cognito ユーザープール ID |
-| `VITE_COGNITO_CLIENT_ID` | Cognito クライアント ID |
+## バックエンドのデプロイ手順（手動）
+
+Lambda へのデプロイは CI/CD を使わず、以下の手順でローカルから行う。
+
+### 1. パッケージビルド
+
+```bash
+cd backend
+uv export --no-dev -o requirements.txt
+pip install -r requirements.txt -t dist/
+cp -r app dist/
+cp -r lambda_handlers dist/
+cd dist && zip -r ../lambda.zip .
+```
+
+### 2. S3 にアップロード
+
+```bash
+aws s3 cp backend/lambda.zip s3://robops-dev-lambda-artifacts/backend/lambda.zip
+```
+
+### 3. Lambda 関数を更新
+
+```bash
+for fn in robops-dev-api robops-dev-telemetry-processor robops-dev-ws-broadcaster robops-dev-scheduler-trigger; do
+  aws lambda update-function-code \
+    --function-name $fn \
+    --s3-bucket robops-dev-lambda-artifacts \
+    --s3-key backend/lambda.zip \
+    --region ap-northeast-1
+done
+```
+
+> **注意**: `dist/` は `.gitignore` に含まれていること。`lambda.zip` も同様。
 
 ---
 

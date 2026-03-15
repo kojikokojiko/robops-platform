@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import type { Robot, ScheduleCreate } from '../../types/robot';
 
@@ -34,11 +34,17 @@ export function ScheduleManager({ robots }: Props) {
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<ScheduleCreate>({
-    robot_id: robots[0]?.robot_id ?? '',
+    robot_id: '',
     room_id: 'living_room',
     cron_expression: 'cron(0 8 * * ? *)',
     description: '',
   });
+
+  useEffect(() => {
+    if (robots.length > 0 && !form.robot_id) {
+      setForm((f) => ({ ...f, robot_id: robots[0].robot_id }));
+    }
+  }, [robots, form.robot_id]);
 
   return (
     <div className="space-y-4">
