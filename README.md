@@ -149,7 +149,7 @@ AWS_PROFILE=dev
 
 | ワークフロー | トリガー | 内容 |
 |------------|---------|------|
-| `ci.yml` | 全ブランチ push / PR | lint + test + terraform validate |
+| `ci.yml` | 全ブランチ push / PR | lint + test + terraform plan |
 | `deploy-backend.yml` | main ブランチ push (backend/) | Lambda デプロイ |
 | `deploy-frontend.yml` | main ブランチ push (frontend/) | S3 + CloudFront デプロイ |
 | `deploy-emulator.yml` | main ブランチ push (emulator/) | ECR push + ECS rolling deploy |
