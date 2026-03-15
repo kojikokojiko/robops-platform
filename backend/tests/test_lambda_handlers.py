@@ -19,9 +19,9 @@ def setup(aws_mock):  # noqa: ANN001
 
 
 class TestTelemetryProcessor:
-    """IoT → DynamoDB upsert + Timestream 書き込み"""
+    """IoT → DynamoDB upsert + テレメトリ履歴 (DynamoDB) 書き込み"""
 
-    @patch("app.services.timestream_service.write_telemetry")
+    @patch("app.services.telemetry_service.write_telemetry")
     def test_upserts_robot_state(self, mock_ts):
         from lambda_handlers.telemetry_processor import handler
 
@@ -44,7 +44,7 @@ class TestTelemetryProcessor:
         assert robot["firmware_version"] == "1.0.0"
         mock_ts.assert_called_once_with(event)
 
-    @patch("app.services.timestream_service.write_telemetry")
+    @patch("app.services.telemetry_service.write_telemetry")
     def test_overwrites_existing_robot(self, mock_ts):
         from lambda_handlers.telemetry_processor import handler
 
@@ -65,7 +65,7 @@ class TestTelemetryProcessor:
         robot = db.get_robot("robot-002")
         assert robot["status"] == "CLEANING"
 
-    @patch("app.services.timestream_service.write_telemetry")
+    @patch("app.services.telemetry_service.write_telemetry")
     def test_missing_robot_id_is_ignored(self, mock_ts):
         from lambda_handlers.telemetry_processor import handler
 
@@ -75,9 +75,9 @@ class TestTelemetryProcessor:
         assert robots == []
         mock_ts.assert_not_called()
 
-    @patch("app.services.timestream_service.write_telemetry", side_effect=Exception("ts error"))
-    def test_timestream_failure_does_not_raise(self, mock_ts):
-        """Timestream 書き込み失敗でも DynamoDB は成功する"""
+    @patch("app.services.telemetry_service.write_telemetry", side_effect=Exception("telemetry error"))
+    def test_telemetry_failure_does_not_raise(self, mock_ts):
+        """テレメトリ履歴書き込み失敗でもロボット状態の upsert は成功する"""
         from lambda_handlers.telemetry_processor import handler
 
         handler(
