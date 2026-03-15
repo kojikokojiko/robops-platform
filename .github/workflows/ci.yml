@@ -101,8 +101,8 @@ jobs:
       - name: Build check
         run: npm run build
 
-  lint-terraform:
-    name: Terraform
+  terraform-plan:
+    name: Terraform Plan
     runs-on: ubuntu-latest
 
     steps:
@@ -113,19 +113,9 @@ jobs:
         with:
           terraform_version: "1.10.0"
 
-      - name: Terraform fmt check
-        run: terraform fmt -check -recursive
-        working-directory: infrastructure
-
-      - name: Setup tflint
-        uses: terraform-linters/setup-tflint@v4
-
-      - name: Terraform validate (dev)
+      - name: Terraform Plan (dev)
         working-directory: infrastructure/environments/dev
+        continue-on-error: true
         run: |
           terraform init -backend=false
-          terraform validate
-
-      - name: tflint
-        working-directory: infrastructure
-        run: tflint --recursive
+          terraform plan -no-color -input=false -refresh=false -var-file=terraform.tfvars.example

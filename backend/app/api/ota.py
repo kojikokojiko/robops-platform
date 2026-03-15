@@ -113,4 +113,5 @@ def _sync_status(item: dict) -> dict:
 
 def _normalize(item: dict) -> dict:
     from decimal import Decimal
+
     return {k: float(v) if isinstance(v, Decimal) else v for k, v in item.items()}

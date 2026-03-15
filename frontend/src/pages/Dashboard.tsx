@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { CommandPanel } from '../components/CommandPanel/CommandPanel';
+import { BatteryBar } from '../components/common/BatteryBar';
+import { StatusBadge } from '../components/common/StatusBadge';
 import { FleetMap } from '../components/FleetMap/FleetMap';
 import { RobotCard } from '../components/RobotCard/RobotCard';
 import { TelemetryChart } from '../components/TelemetryChart/TelemetryChart';
-import { BatteryBar } from '../components/common/BatteryBar';
-import { StatusBadge } from '../components/common/StatusBadge';
 import { useRobot, useRobots } from '../hooks/useRobots';
 import { useWebSocket } from '../hooks/useWebSocket';
 import type { RobotStatus } from '../types/robot';
@@ -145,11 +145,22 @@ export function Dashboard() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: '総台数', value: robots.length, color: 'text-slate-800' },
-            { label: '掃除中', value: robots.filter((r) => r.status === 'CLEANING').length, color: 'text-blue-600' },
-            { label: '充電中', value: robots.filter((r) => r.status === 'CHARGING').length, color: 'text-green-600' },
+            {
+              label: '掃除中',
+              value: robots.filter((r) => r.status === 'CLEANING').length,
+              color: 'text-blue-600',
+            },
+            {
+              label: '充電中',
+              value: robots.filter((r) => r.status === 'CHARGING').length,
+              color: 'text-green-600',
+            },
             { label: '要注意', value: alerts.length, color: 'text-orange-600' },
           ].map((s) => (
-            <div key={s.label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm text-center">
+            <div
+              key={s.label}
+              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm text-center"
+            >
               <p className={`text-3xl font-bold ${s.color}`}>{s.value}</p>
               <p className="mt-1 text-xs text-slate-500">{s.label}</p>
             </div>

@@ -19,6 +19,7 @@ def setup(aws_mock):  # noqa: ANN001
 
 # ─── GET /ota/jobs ────────────────────────────────────────
 
+
 def test_list_ota_jobs_empty():
     resp = client.get("/ota/jobs")
     assert resp.status_code == 200
@@ -27,18 +28,22 @@ def test_list_ota_jobs_empty():
 
 # ─── POST /ota/jobs ───────────────────────────────────────
 
+
 @patch("app.services.iot_service._get_account_id", return_value="123456789012")
 @patch("app.services.iot_service._iot_client")
 def test_create_ota_job(mock_iot_client_fn, _mock_account):
     mock_iot = mock_iot_client_fn.return_value
     mock_iot.create_job.return_value = {"jobId": "ota-test1234"}
 
-    resp = client.post("/ota/jobs", json={
-        "robot_ids": ["robot-001", "robot-002"],
-        "version": "2.0.0",
-        "new_speed": 1.5,
-        "description": "速度アップ",
-    })
+    resp = client.post(
+        "/ota/jobs",
+        json={
+            "robot_ids": ["robot-001", "robot-002"],
+            "version": "2.0.0",
+            "new_speed": 1.5,
+            "description": "速度アップ",
+        },
+    )
 
     assert resp.status_code == 201
     data = resp.json()
@@ -58,14 +63,18 @@ def test_create_ota_job(mock_iot_client_fn, _mock_account):
 def test_create_ota_job_uploads_manifest(mock_iot_client_fn, _mock_account):
     """S3 にマニフェストが実際にアップロードされること"""
     import boto3
+
     mock_iot_client_fn.return_value.create_job.return_value = {"jobId": "ota-abc"}
 
-    client.post("/ota/jobs", json={
-        "robot_ids": ["robot-001"],
-        "version": "3.0.0",
-        "new_speed": 0.8,
-        "description": "",
-    })
+    client.post(
+        "/ota/jobs",
+        json={
+            "robot_ids": ["robot-001"],
+            "version": "3.0.0",
+            "new_speed": 0.8,
+            "description": "",
+        },
+    )
 
     s3 = boto3.client("s3", region_name="ap-northeast-1")
     objects = s3.list_objects_v2(Bucket="test-firmware-bucket", Prefix="manifests/")
@@ -74,6 +83,7 @@ def test_create_ota_job_uploads_manifest(mock_iot_client_fn, _mock_account):
 
 # ─── GET /ota/jobs/{job_id} ──────────────────────────────
 
+
 @patch("app.services.iot_service._get_account_id", return_value="123456789012")
 @patch("app.services.iot_service._iot_client")
 def test_get_ota_job(mock_iot_client_fn, _mock_account):
@@ -81,12 +91,15 @@ def test_get_ota_job(mock_iot_client_fn, _mock_account):
     mock_iot.create_job.return_value = {"jobId": "ota-xyz"}
     mock_iot.describe_job.return_value = {"job": {"status": "QUEUED"}}
 
-    create_resp = client.post("/ota/jobs", json={
-        "robot_ids": ["robot-001"],
-        "version": "1.1.0",
-        "new_speed": 1.0,
-        "description": "",
-    })
+    create_resp = client.post(
+        "/ota/jobs",
+        json={
+            "robot_ids": ["robot-001"],
+            "version": "1.1.0",
+            "new_speed": 1.0,
+            "description": "",
+        },
+    )
     job_id = create_resp.json()[0]["job_id"]
 
     get_resp = client.get(f"/ota/jobs/{job_id}")
@@ -108,12 +121,15 @@ def test_get_nonexistent_ota_job(mock_iot_client_fn):
 def test_list_ota_jobs_after_create(mock_iot_client_fn, _mock_account):
     mock_iot_client_fn.return_value.create_job.return_value = {"jobId": "ota-list"}
 
-    client.post("/ota/jobs", json={
-        "robot_ids": ["robot-001", "robot-002", "robot-003"],
-        "version": "1.5.0",
-        "new_speed": 1.2,
-        "description": "",
-    })
+    client.post(
+        "/ota/jobs",
+        json={
+            "robot_ids": ["robot-001", "robot-002", "robot-003"],
+            "version": "1.5.0",
+            "new_speed": 1.2,
+            "description": "",
+        },
+    )
 
     resp = client.get("/ota/jobs")
     assert resp.status_code == 200

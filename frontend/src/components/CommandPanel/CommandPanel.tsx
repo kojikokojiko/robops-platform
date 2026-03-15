@@ -78,7 +78,6 @@ export function CommandPanel({ robot }: Props) {
         >
           {robot.battery_level < 20 ? '⚡ 充電ドックへ戻す' : '充電ドックへ戻す'}
         </button>
-
       </div>
     </div>
   );

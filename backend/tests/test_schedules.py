@@ -19,6 +19,7 @@ def setup(aws_mock):  # noqa: ANN001
 
 # ─── GET /schedules ────────────────────────────────────────
 
+
 def test_list_schedules_empty():
     resp = client.get("/schedules")
     assert resp.status_code == 200
@@ -27,16 +28,20 @@ def test_list_schedules_empty():
 
 # ─── POST /schedules ──────────────────────────────────────
 
+
 @patch("app.services.scheduler_service._scheduler")
 def test_create_schedule(mock_sched):
     mock_sched.create_schedule.return_value = {}
 
-    resp = client.post("/schedules", json={
-        "robot_id": "robot-001",
-        "room_id": "living_room",
-        "cron_expression": "cron(0 8 * * ? *)",
-        "description": "毎朝8時",
-    })
+    resp = client.post(
+        "/schedules",
+        json={
+            "robot_id": "robot-001",
+            "room_id": "living_room",
+            "cron_expression": "cron(0 8 * * ? *)",
+            "description": "毎朝8時",
+        },
+    )
 
     assert resp.status_code == 201
     data = resp.json()
@@ -54,12 +59,15 @@ def test_create_schedule_persisted(mock_sched):
     """作成後に一覧に現れることを確認"""
     mock_sched.create_schedule.return_value = {}
 
-    client.post("/schedules", json={
-        "robot_id": "robot-002",
-        "room_id": "kitchen",
-        "cron_expression": "cron(0 9 * * ? *)",
-        "description": "",
-    })
+    client.post(
+        "/schedules",
+        json={
+            "robot_id": "robot-002",
+            "room_id": "kitchen",
+            "cron_expression": "cron(0 9 * * ? *)",
+            "description": "",
+        },
+    )
 
     resp = client.get("/schedules")
     assert resp.status_code == 200
@@ -69,18 +77,22 @@ def test_create_schedule_persisted(mock_sched):
 
 # ─── DELETE /schedules/{id} ───────────────────────────────
 
+
 @patch("app.services.scheduler_service._scheduler")
 def test_delete_schedule(mock_sched):
     mock_sched.create_schedule.return_value = {}
     mock_sched.delete_schedule.return_value = {}
 
     # 作成
-    create_resp = client.post("/schedules", json={
-        "robot_id": "robot-001",
-        "room_id": "bedroom_1",
-        "cron_expression": "cron(0 10 * * ? *)",
-        "description": "",
-    })
+    create_resp = client.post(
+        "/schedules",
+        json={
+            "robot_id": "robot-001",
+            "room_id": "bedroom_1",
+            "cron_expression": "cron(0 10 * * ? *)",
+            "description": "",
+        },
+    )
     schedule_id = create_resp.json()["schedule_id"]
 
     # 削除
@@ -103,12 +115,15 @@ def test_create_multiple_schedules(mock_sched):
     mock_sched.create_schedule.return_value = {}
 
     for i in range(3):
-        client.post("/schedules", json={
-            "robot_id": f"robot-00{i+1}",
-            "room_id": "living_room",
-            "cron_expression": "cron(0 8 * * ? *)",
-            "description": "",
-        })
+        client.post(
+            "/schedules",
+            json={
+                "robot_id": f"robot-00{i + 1}",
+                "room_id": "living_room",
+                "cron_expression": "cron(0 8 * * ? *)",
+                "description": "",
+            },
+        )
 
     resp = client.get("/schedules")
     assert len(resp.json()) == 3

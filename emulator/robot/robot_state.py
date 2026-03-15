@@ -269,13 +269,17 @@ class RobotState:
             break
 
     def _tick_charging(self, elapsed: float) -> None:
-        self.battery_level = min(100.0, self.battery_level + self.battery_charge_rate * elapsed * 60)
+        self.battery_level = min(
+            100.0, self.battery_level + self.battery_charge_rate * elapsed * 60
+        )
         self.speed = 0.0
         if self.battery_level >= 100.0:
             self.status = RobotStatus.IDLE
 
     def _tick_returning(self, elapsed: float) -> None:
-        self.battery_level = max(0.0, self.battery_level - self.battery_drain_rate * 0.5 * elapsed * 60)
+        self.battery_level = max(
+            0.0, self.battery_level - self.battery_drain_rate * 0.5 * elapsed * 60
+        )
 
         if self._waypoints:
             target = self._waypoints[0]
@@ -299,6 +303,7 @@ class RobotState:
 
 def _random_room() -> str:
     import random
+
     return random.choice([r for r in ROOMS if r != "charging_dock"])  # noqa: S311
 
 

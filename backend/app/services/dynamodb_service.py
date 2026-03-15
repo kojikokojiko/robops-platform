@@ -8,7 +8,9 @@ from typing import Any
 import boto3
 from boto3.dynamodb.conditions import Key
 
-_dynamodb = boto3.resource("dynamodb", region_name=os.getenv("AWS_DEFAULT_REGION", "ap-northeast-1"))
+_dynamodb = boto3.resource(
+    "dynamodb", region_name=os.getenv("AWS_DEFAULT_REGION", "ap-northeast-1")
+)
 
 
 def _table(name_env: str) -> Any:
@@ -16,6 +18,7 @@ def _table(name_env: str) -> Any:
 
 
 # ─── Robots ──────────────────────────────────────────────
+
 
 def get_all_robots() -> list[dict[str, Any]]:
     table = _table("DYNAMODB_TABLE_ROBOTS")
@@ -45,6 +48,7 @@ def get_robots_by_status(status: str) -> list[dict[str, Any]]:
 
 # ─── Schedules ────────────────────────────────────────────
 
+
 def get_all_schedules() -> list[dict[str, Any]]:
     table = _table("DYNAMODB_TABLE_SCHEDULES")
     return table.scan().get("Items", [])
@@ -71,6 +75,7 @@ def delete_schedule(schedule_id: str, robot_id: str) -> None:
 
 # ─── OTA Jobs ─────────────────────────────────────────────
 
+
 def get_ota_jobs_by_robot(robot_id: str) -> list[dict[str, Any]]:
     table = _table("DYNAMODB_TABLE_OTA_JOBS")
     resp = table.query(
@@ -90,6 +95,7 @@ def get_all_ota_jobs() -> list[dict[str, Any]]:
 
 # ─── WebSocket Connections ────────────────────────────────
 
+
 def save_connection(connection_id: str, ttl: int) -> None:
     _table("DYNAMODB_TABLE_WS_CONNECTIONS").put_item(
         Item={"connection_id": connection_id, "ttl": ttl}
@@ -97,9 +103,7 @@ def save_connection(connection_id: str, ttl: int) -> None:
 
 
 def delete_connection(connection_id: str) -> None:
-    _table("DYNAMODB_TABLE_WS_CONNECTIONS").delete_item(
-        Key={"connection_id": connection_id}
-    )
+    _table("DYNAMODB_TABLE_WS_CONNECTIONS").delete_item(Key={"connection_id": connection_id})
 
 
 def get_all_connections() -> list[str]:

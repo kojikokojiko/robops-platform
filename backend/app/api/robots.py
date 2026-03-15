@@ -36,6 +36,7 @@ def send_command(robot_id: str, body: RobotCommand) -> CommandResponse:
 def _normalize(item: dict) -> dict:
     """DynamoDB の Decimal 等を float に変換"""
     from decimal import Decimal
+
     result = {}
     for k, v in item.items():
         if isinstance(v, Decimal):

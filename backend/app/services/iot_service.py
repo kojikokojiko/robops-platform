@@ -96,4 +96,5 @@ def _get_account_id() -> str:
 
 def _now_iso() -> str:
     import time
+
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())

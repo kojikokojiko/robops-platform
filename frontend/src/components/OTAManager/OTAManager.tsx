@@ -92,7 +92,9 @@ export function OTAManager({ robots }: Props) {
             type="button"
             onClick={() => setFilterRobot(null)}
             className={`rounded-full px-3 py-0.5 text-xs font-medium transition ${
-              filterRobot === null ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              filterRobot === null
+                ? 'bg-slate-700 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
             すべて
@@ -103,7 +105,9 @@ export function OTAManager({ robots }: Props) {
               type="button"
               onClick={() => setFilterRobot(filterRobot === r.robot_id ? null : r.robot_id)}
               className={`rounded-full px-3 py-0.5 text-xs font-medium transition ${
-                filterRobot === r.robot_id ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                filterRobot === r.robot_id
+                  ? 'bg-slate-700 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
               {r.robot_id}
@@ -122,36 +126,36 @@ export function OTAManager({ robots }: Props) {
                 return a.robot_id.localeCompare(b.robot_id);
               })
               .map((job) => (
-              <div
-                key={`${job.job_id}-${job.robot_id}`}
-                className="flex items-center justify-between px-4 py-3"
-              >
-                <div>
-                  <p className="text-sm font-medium text-slate-800">
-                    {job.robot_id} &nbsp;
-                    <span className="font-normal text-slate-500">→ v{job.firmware_version}</span>
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    速度: {job.new_speed} m/s &nbsp;·&nbsp; {job.job_id}
-                  </p>
+                <div
+                  key={`${job.job_id}-${job.robot_id}`}
+                  className="flex items-center justify-between px-4 py-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">
+                      {job.robot_id} &nbsp;
+                      <span className="font-normal text-slate-500">→ v{job.firmware_version}</span>
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      速度: {job.new_speed} m/s &nbsp;·&nbsp; {job.job_id}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {job.status === 'IN_PROGRESS' && (
+                      <div className="h-1.5 w-20 rounded-full bg-slate-200">
+                        <div
+                          className="h-1.5 rounded-full bg-blue-500 transition-all"
+                          style={{ width: `${job.progress}%` }}
+                        />
+                      </div>
+                    )}
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[job.status] ?? 'bg-slate-100 text-slate-600'}`}
+                    >
+                      {STATUS_LABEL[job.status] ?? job.status}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {job.status === 'IN_PROGRESS' && (
-                    <div className="h-1.5 w-20 rounded-full bg-slate-200">
-                      <div
-                        className="h-1.5 rounded-full bg-blue-500 transition-all"
-                        style={{ width: `${job.progress}%` }}
-                      />
-                    </div>
-                  )}
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[job.status] ?? 'bg-slate-100 text-slate-600'}`}
-                  >
-                    {STATUS_LABEL[job.status] ?? job.status}
-                  </span>
-                </div>
-              </div>
-            ))}
+              ))}
           </div>
         )}
       </div>
